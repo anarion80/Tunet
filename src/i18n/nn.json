@@ -536,8 +536,6 @@
   "statusPills.searchPlayer": "Søk spelar...",
   "statusPills.searchEntity": "Søk etter entitet...",
   "statusPills.selectPillHint": "Vel ein pill til venstre for å redigere,<br/>eller trykk + for å legge til ny.",
-  "statusPills.cancel": "Avbryt",
-  "statusPills.save": "Lagre",
   "statusPills.colorBlue": "Blå",
   "statusPills.colorGreen": "Grøn",
   "statusPills.colorRed": "Raud",

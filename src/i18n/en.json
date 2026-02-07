@@ -536,8 +536,6 @@
   "statusPills.searchPlayer": "Search player...",
   "statusPills.searchEntity": "Search for entity...",
   "statusPills.selectPillHint": "Select a pill on the left to edit,<br/>or press + to add a new one.",
-  "statusPills.cancel": "Cancel",
-  "statusPills.save": "Save",
   "statusPills.colorBlue": "Blue",
   "statusPills.colorGreen": "Green",
   "statusPills.colorRed": "Red",
