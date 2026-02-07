@@ -255,7 +255,9 @@ export default function SensorModal({ isOpen, onClose, entityId, entity, customN
          if (!isNaN(d.getTime())) {
            return d.toLocaleString();
          }
-      } catch (e) {}
+      } catch (e) {
+        // Silently ignore parse errors for non-date values
+      }
     }
 
     // Base state mappings

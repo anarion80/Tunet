@@ -154,7 +154,6 @@ export default function PersonModal({
 
     const timer = setTimeout(() => {
        if (!mapRef.current) return;
-       // if (!window.L) return;
 
        // Init Map
        if (!mapInstanceRef.current) {
@@ -314,11 +313,11 @@ export default function PersonModal({
               {showHistory && historyPoints.length > 0 && (
                 <div className="space-y-2 pt-2">
                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] ml-1 flex items-center gap-2">
-                      <Clock className="w-3 h-3" /> Historikk (Siste 24t)
+                      <Clock className="w-3 h-3" /> {t('person.historyTitle')}
                    </h4>
                    <div className="space-y-1">
                       {historyPoints.map((pt, i) => (
-                          <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                          <div key={pt.last_updated || i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
                               <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></div>
                               <span className="text-xs font-mono text-gray-400">{new Date(pt.last_updated).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                               <span className="text-xs text-gray-300 truncate">

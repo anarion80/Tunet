@@ -53,11 +53,10 @@ export default function GenericAndroidTVModal({
   if (linkedActive) {
       const seriesTitle = getA(displayEntityId, 'media_series_title');
       if (seriesTitle) {
-          title = title; // Episode Title
+          // title already holds episode title from media_title
           appName = seriesTitle; // Series Name
       } else {
-          // Movie
-          title = title;
+          // title already holds movie title from media_title
           if (!appName) {
              appName = (displayEntityId !== mediaPlayerId ? customNames[displayEntityId] || displayEntity?.attributes?.friendly_name : null);
           }

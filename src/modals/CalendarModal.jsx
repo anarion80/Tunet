@@ -209,7 +209,7 @@ export default function CalendarModal({
                                      <div className="flex-shrink-0 text-right min-w-[3rem]">
                                     {isAllDay ? (
                                       <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-60">
-                                        Heile
+                                        {translate('calendar.allDayShort')}
                                       </span>
                                     ) : (
                                         <p className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
@@ -264,7 +264,7 @@ export default function CalendarModal({
                   }}
                   className="text-[10px] font-bold uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                  {selectedCalendars.length === allCalendars.length ? 'Fjern alle' : 'Vel alle'}
+                  {selectedCalendars.length === allCalendars.length ? translate('calendar.removeAll') : translate('calendar.selectAll')}
                 </button>
               </div>
               

@@ -469,7 +469,7 @@ export default function EditCardModal({
 
                 {mappedSensors.length === 0 && (
                   <div className="text-center py-8 text-gray-500 text-sm">
-                    {t('car.noSensorsMapped') || 'Ingen sensorar valde. Trykk "Legg til sensor" for å starte.'}
+                    {t('car.noSensorsMapped')}
                   </div>
                 )}
 
@@ -506,14 +506,14 @@ export default function EditCardModal({
                     className="w-full py-3.5 px-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    {t('car.addSensor') || 'Legg til sensor'}
+                    {t('car.addSensor')}
                   </button>
                 )}
 
                 {showAddSensor && (
                   <div className="space-y-4 px-4 sm:px-5 py-4 popup-surface rounded-xl">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">{t('car.addSensor') || 'Legg til sensor'}</span>
+                      <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">{t('car.addSensor')}</span>
                       <button
                         onClick={() => {
                           setShowAddSensor(false);
@@ -550,11 +550,11 @@ export default function EditCardModal({
 
                       return (
                         <SearchableSelect
-                          label={t('car.selectEntity') || 'Vel entitet'}
+                          label={t('car.selectEntity')}
                           value={sensorEntity}
                           options={selectedType.options}
                           onChange={(value) => setSensorEntity(value)}
-                          placeholder={t('car.selectEntityPlaceholder') || 'Søk og vel...'}
+                          placeholder={t('car.selectEntityPlaceholder')}
                           entities={entities}
                           t={t}
                         />
@@ -567,7 +567,7 @@ export default function EditCardModal({
                         disabled={!sensorType || !sensorEntity}
                         className="flex-1 py-3 px-4 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold uppercase tracking-widest text-xs transition-colors"
                       >
-                        {t('car.add') || 'Legg til'}
+                        {t('car.add')}
                       </button>
                       <button
                         onClick={() => {
@@ -577,7 +577,7 @@ export default function EditCardModal({
                         }}
                         className="px-4 py-3 rounded-xl popup-surface popup-surface-hover text-[var(--text-secondary)] font-bold uppercase tracking-widest text-xs transition-colors"
                       >
-                        {t('common.cancel') || 'Avbryt'}
+                        {t('common.cancel')}
                       </button>
                     </div>
                   </div>
@@ -585,7 +585,7 @@ export default function EditCardModal({
 
                 {availableTypes.length === 0 && !showAddSensor && (
                   <div className="text-center py-4 text-gray-500 text-xs">
-                    {t('car.allSensorsMapped') || 'Alle sensortypar er valde'}
+                    {t('car.allSensorsMapped')}
                   </div>
                 )}
               </div>

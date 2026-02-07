@@ -46,7 +46,6 @@ export default function WeatherModal({
   const condition = weatherEntity.state;
   const info = getWeatherInfo(condition, t);
   const MainIcon = info.Icon;
-  // const iconUrl = `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@master/production/fill/all/${info.icon}.svg`;
 
   const currentTempRaw = tempEntity?.state ?? weatherEntity.attributes?.temperature;
   const currentTemp = Number.isFinite(parseFloat(currentTempRaw)) ? parseFloat(currentTempRaw) : null;
@@ -126,7 +125,6 @@ export default function WeatherModal({
         : time.toLocaleDateString('nb-NO', { weekday: 'short', day: 'numeric' });
       const itemCondition = f.condition || condition;
       const itemInfo = getWeatherInfo(itemCondition, t);
-      // const itemIconUrl = `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@master/production/fill/all/${itemInfo.icon}.svg`;
       const precip = f.precipitation ?? f.precipitation_probability ?? f.precipitation_amount;
       return {
         key: `${label}-${index}`,

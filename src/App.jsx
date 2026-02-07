@@ -1,55 +1,39 @@
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy } from 'react';
 import { en, nn } from './i18n';
 import {
   Activity,
-  AlertCircle,
   AlertTriangle,
-  ArrowLeftRight,
-  Battery,
-  Bot,
-  Calendar,
-  Car,
   Check,
   ChevronLeft,
   ChevronRight,
-  CloudSun,
-  Coins,
-  Columns,
   Edit2,
   Eye,
   EyeOff,
-  Flame,
-  Gamepad2,
   GripVertical,
   Hash,
-  Home,
   LayoutGrid,
-  Lightbulb,
-  MapPin,
   Maximize2,
   Minimize2,
-  Music,
-  Pause,
-  Play,
   Plus,
   Power,
-  Search,
   Settings,
-  SkipBack,
-  SkipForward,
-  Speaker,
-  Thermometer,
   ToggleRight,
   Trash2,
-  Tv,
-  User,
-  Workflow,
-  X,
-  Zap
+  Workflow
 } from './icons';
+
+import {
+  ENTITY_UPDATE_INTERVAL,
+  ENTITY_UPDATE_THRESHOLD,
+  MEDIA_TIMEOUT,
+  MEDIA_TICK_INTERVAL,
+  INITIAL_FETCH_DELAY,
+  MOBILE_BREAKPOINT
+} from './constants';
 
 // Lazy load modals for better performance
 const AddPageModal = lazy(() => import('./modals/AddPageModal'));
+const AddCardContent = lazy(() => import('./modals/AddCardContent'));
 const CalendarModal = lazy(() => import('./modals/CalendarModal'));
 const ConfigModal = lazy(() => import('./modals/ConfigModal'));
 const CostModal = lazy(() => import('./modals/CostModal'));
@@ -71,14 +55,22 @@ import { Header, StatusBar } from './layouts';
 
 import {
   CalendarCard,
+  CarCard,
   GenericAndroidTVCard,
   GenericClimateCard,
   GenericEnergyCostCard,
   GenericNordpoolCard,
+  LightCard,
   M3Slider,
+  MediaPlayerCard,
+  MediaGroupCard,
   MediaPage,
+  MissingEntityCard,
+  ModalSuspense,
   PageNavigation,
+  PersonStatus,
   SensorCard,
+  VacuumCard,
   WeatherTempCard,
   getServerInfo
 } from './components';
@@ -91,11 +83,15 @@ import {
   usePages
 } from './contexts';
 
+import { useModals, useSmartTheme, useTempHistory } from './hooks';
 import { themes } from './themes';
-import { formatDuration } from './utils';
+import { formatDuration, isToggleEntity } from './utils';
+import './dashboard.css';
 import { getIconComponent } from './iconMap';
 import { buildOnboardingSteps, validateUrl } from './onboarding';
-import { callService as haCallService, getHistory, getStatistics } from './services';
+import { callService as haCallService, handleAddSelected, prepareNordpoolData } from './services';
+import { isCardRemovable as _isCardRemovable, isCardHiddenByLogic as _isCardHiddenByLogic, isMediaPage as _isMediaPage } from './cardUtils';
+import { getCardGridSpan as _getCardGridSpan, buildGridLayout as _buildGridLayout } from './gridLayout';
 import { createDragAndDropHandlers } from './dragAndDrop';
 
 function AppContent({ showOnboarding, setShowOnboarding }) {
@@ -163,41 +159,74 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   const t = (key) => translations[language]?.[key] || translations.nn[key] || key;
   const resolvedHeaderTitle = headerTitle || t('page.home');
   const [now, setNow] = useState(new Date());
-  const [showNordpoolModal, setShowNordpoolModal] = useState(null);
-  const [showCostModal, setShowCostModal] = useState(null);
-  const [activeClimateEntityModal, setActiveClimateEntityModal] = useState(null);
-  const [showLightModal, setShowLightModal] = useState(null);
-  const [activeCarModal, setActiveCarModal] = useState(null);
-  const [showPersonModal, setShowPersonModal] = useState(null);
-  const [showAndroidTVModal, setShowAndroidTVModal] = useState(null);
-  const [showVacuumModal, setShowVacuumModal] = useState(false);
+  
+  // Modal state management
+  const modals = useModals();
+  const {
+    showNordpoolModal,
+    setShowNordpoolModal,
+    showCostModal,
+    setShowCostModal,
+    activeClimateEntityModal,
+    setActiveClimateEntityModal,
+    showLightModal,
+    setShowLightModal,
+    activeCarModal,
+    setActiveCarModal,
+    showPersonModal,
+    setShowPersonModal,
+    showAndroidTVModal,
+    setShowAndroidTVModal,
+    showVacuumModal,
+    setShowVacuumModal,
+    showSensorInfoModal,
+    setShowSensorInfoModal,
+    showCalendarModal,
+    setShowCalendarModal,
+    showWeatherModal,
+    setShowWeatherModal,
+    activeMediaModal,
+    setActiveMediaModal,
+    activeMediaGroupKey,
+    setActiveMediaGroupKey,
+    activeMediaGroupIds,
+    setActiveMediaGroupIds,
+    activeMediaSessionSensorIds,
+    setActiveMediaSessionSensorIds,
+    activeMediaId,
+    setActiveMediaId,
+    showAddCardModal,
+    setShowAddCardModal,
+    showConfigModal,
+    setShowConfigModal,
+    showAddPageModal,
+    setShowAddPageModal,
+    showHeaderEditModal,
+    setShowHeaderEditModal,
+    showEditCardModal,
+    setShowEditCardModal,
+    showStatusPillsConfig,
+    setShowStatusPillsConfig,
+    hasOpenModal,
+    closeAllModals,
+  } = modals;
+  
   const [activeVacuumId, setActiveVacuumId] = useState(null);
-  const [showAddCardModal, setShowAddCardModal] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
   const [configTab, setConfigTab] = useState('connection');
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingUrlError, setOnboardingUrlError] = useState('');
   const [onboardingTokenError, setOnboardingTokenError] = useState('');
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState(null);
-  const [showAddPageModal, setShowAddPageModal] = useState(false);
   const [newPageLabel, setNewPageLabel] = useState('');
   const [newPageIcon, setNewPageIcon] = useState(null);
-  const [showHeaderEditModal, setShowHeaderEditModal] = useState(false);
-  const [showEditCardModal, setShowEditCardModal] = useState(null);
-  const [showSensorInfoModal, setShowSensorInfoModal] = useState(null);
   const [editCardSettingsKey, setEditCardSettingsKey] = useState(null);
-  const [activeMediaModal, setActiveMediaModal] = useState(null);
-  const [activeMediaGroupKey, setActiveMediaGroupKey] = useState(null);
-  const [activeMediaGroupIds, setActiveMediaGroupIds] = useState(null);
-  const [activeMediaSessionSensorIds, setActiveMediaSessionSensorIds] = useState(null);
   const [mediaTick, setMediaTick] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [draggingId, setDraggingId] = useState(null);
   const [activePage, setActivePage] = useState('home');
   const [addCardTargetPage, setAddCardTargetPage] = useState('home');
   const [addCardType, setAddCardType] = useState('sensor');
-  const [activeMediaId, setActiveMediaId] = useState(null);
   const [gridColCount, setGridColCount] = useState(1);
   const [isCompactCards, setIsCompactCards] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -221,118 +250,21 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   const [selectedNordpoolId, setSelectedNordpoolId] = useState(null);
   const [nordpoolDecimals, setNordpoolDecimals] = useState(2);
   const [optimisticLightBrightness, setOptimisticLightBrightness] = useState({});
-  const [tempHistoryById, setTempHistoryById] = useState({});
-  const [showStatusPillsConfig, setShowStatusPillsConfig] = useState(false);
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [showWeatherModal, setShowWeatherModal] = useState(null);
+  const [tempHistoryById, setTempHistoryById] = useTempHistory(conn, cardSettings);
 
   // Smart Theme Logic — only active when bgMode is 'theme'
-  useEffect(() => {
-    if (currentTheme !== 'contextual') return;
-    if (bgMode !== 'theme') return;
-
-    const weatherEntity = Object.values(entities).find(e => e.entity_id.startsWith('weather.'));
-    const weatherState = weatherEntity?.state;
-    const sunEntity = entities['sun.sun'];
-    const hour = now.getHours();
-    
-    let bgGradientFrom, bgGradientTo, bgPrimary;
-
-    if (sunEntity) {
-      const isUp = sunEntity.state === 'above_horizon';
-      const elevation = Number(sunEntity.attributes?.elevation || 0);
-      
-      if (!isUp) {
-        // Night: Deep Midnight Blue -> Black
-        bgGradientFrom = '#0f172a'; // Slate-900
-        bgGradientTo = '#020617';   // Slate-950
-        bgPrimary = '#020617';
-      } else {
-        if (elevation < 10) {
-           // Transition (Sunrise / Sunset)
-           if (hour < 12) {
-             // Sunrise: Soft Golden Hour (Blue -> Warm Gold)
-             bgGradientFrom = '#3b82f6'; // Blue-500
-             bgGradientTo = '#fdba74';   // Orange-300
-             bgPrimary = '#1e293b';      // Slate-800
-           } else {
-             // Sunset: Magic Hour (Deep Violet -> Soft Pink)
-             bgGradientFrom = '#6366f1'; // Indigo-500
-             bgGradientTo = '#f472b6';   // Pink-400
-             bgPrimary = '#312e81';      // Indigo-900
-           }
-        } else {
-           // Day: Clean Air (Sky Blue -> Clear Blue)
-           bgGradientFrom = '#38bdf8'; // Sky-400
-           bgGradientTo = '#3b82f6';   // Blue-500
-           bgPrimary = '#0f172a';      // Slate-900
-        }
-      }
-    } else {
-      // Fallback
-      if (hour >= 6 && hour < 10) { 
-        bgGradientFrom = '#3b82f6';
-        bgGradientTo = '#fdba74';
-        bgPrimary = '#1e293b';
-      } else if (hour >= 10 && hour < 17) {
-        bgGradientFrom = '#38bdf8';
-        bgGradientTo = '#3b82f6';
-        bgPrimary = '#0f172a';
-      } else if (hour >= 17 && hour < 21) {
-        bgGradientFrom = '#6366f1';
-        bgGradientTo = '#f472b6';
-        bgPrimary = '#312e81';
-      } else {
-        bgGradientFrom = '#0f172a';
-        bgGradientTo = '#020617';
-        bgPrimary = '#020617';
-      }
-    }
-
-    // Weather adjustments: Muted sophistication (Desaturate)
-    if (weatherState === 'rainy' || weatherState === 'pouring' || weatherState === 'snowy' || weatherState === 'hail') {
-      // Rainy: Deep Blue-Grey
-      bgGradientFrom = '#334155'; // Slate-700
-      bgGradientTo = '#1e293b';   // Slate-800
-    } else if (weatherState === 'cloudy' || weatherState === 'partlycloudy' || weatherState === 'fog') {
-      // Cloudy: Soft Grey-Blue
-      bgGradientFrom = '#475569'; // Slate-600
-      bgGradientTo = '#64748b';   // Slate-500
-    }
-
-    // Apply
-    const root = document.documentElement;
-    root.style.setProperty('--bg-gradient-from', bgGradientFrom);
-    root.style.setProperty('--bg-gradient-to', bgGradientTo);
-    root.style.setProperty('--bg-primary', bgPrimary);
-    
-  }, [currentTheme, now, entities, bgMode]);
+  useSmartTheme({ currentTheme, bgMode, entities, now });
 
   const updateCount = Object.values(entities).filter(e => e.entity_id.startsWith('update.') && e.state === 'on' && !e.attributes.skipped_version).length;
   const resetToHome = () => {
     const isHome = activePage === 'home';
-    const noModals = !showNordpoolModal && !showCostModal && !activeClimateEntityModal && !showLightModal && !activeCarModal && !showAndroidTVModal && !showVacuumModal && !showAddCardModal && !showConfigModal && !showEditCardModal && !showSensorInfoModal && !activeMediaModal && !editingPage && !editMode && !showStatusPillsConfig && !showPersonModal && !showCalendarModal && !showWeatherModal;
+    const noModals = !hasOpenModal() && !editingPage && !editMode;
     
     if (!isHome || !noModals) {
         setActivePage('home');
-        setShowNordpoolModal(null);
-        setShowCostModal(null);
-        setActiveClimateEntityModal(null);
-        setShowLightModal(null);
-        setActiveCarModal(null);
-        setShowPersonModal(null);
-
-        setShowVacuumModal(false);
+        closeAllModals();
         setActiveVacuumId(null);
-        setShowAddCardModal(false);
-        setShowConfigModal(false);
-        setShowEditCardModal(null);
-        setShowSensorInfoModal(null);
         setEditCardSettingsKey(null);
-        setActiveMediaModal(null);
-        setActiveMediaGroupKey(null);
-        setActiveMediaGroupIds(null);
-        setActiveMediaSessionSensorIds(null);
         setEditingPage(null);
         setEditMode(false);
         setShowStatusPillsConfig(false);
@@ -397,14 +329,14 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   }, [resolvedHeaderTitle]);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30000);
+    const timer = setInterval(() => setNow(new Date()), ENTITY_UPDATE_INTERVAL);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (!activeMediaModal) return;
     setMediaTick(Date.now());
-    const intervalId = setInterval(() => setMediaTick(Date.now()), 1000);
+    const intervalId = setInterval(() => setMediaTick(Date.now()), MEDIA_TICK_INTERVAL);
     return () => clearInterval(intervalId);
   }, [activeMediaModal]);
 
@@ -412,7 +344,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     // Clear optimistic updates when actual state comes back
     const timeout = setTimeout(() => {
       setOptimisticLightBrightness({});
-    }, 500);
+    }, INITIAL_FETCH_DELAY);
     return () => clearTimeout(timeout);
   }, [entities]);
 
@@ -469,7 +401,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     if (entity.state === 'paused') {
       const lastUpdated = new Date(entity.last_updated).getTime();
       const nowTime = now.getTime();
-      return (nowTime - lastUpdated) < 120000;
+      return (nowTime - lastUpdated) < MEDIA_TIMEOUT;
     }
     return false;
   };
@@ -479,7 +411,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     if (entity.state === 'playing') return true;
     const lastUpdated = new Date(entity.last_updated).getTime();
     const nowTime = now.getTime();
-    return (nowTime - lastUpdated) < 30000;
+    return (nowTime - lastUpdated) < ENTITY_UPDATE_THRESHOLD;
   };
 
   const getS = (id, fallback = "--") => {
@@ -506,71 +438,17 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     });
   };
 
-  const personStatus = (id) => {
-    const entity = entities[id];
-    if (!entity && !editMode) return null;
-    
-    const isHome = entity?.state === 'home';
-    const statusText = getS(id);
-    const name = customNames[id] || entity?.attributes?.friendly_name || id;
-    const picture = getEntityImageUrl(entity?.attributes?.entity_picture);
-    const headerSettingsKey = getCardSettingsKey(id, 'header');
-    const headerSettings = cardSettings[headerSettingsKey] || {};
-    const personDisplay = headerSettings.personDisplay || 'photo';
-    const useIcon = personDisplay === 'icon';
-    const personIconName = customIcons[id] || entity?.attributes?.icon;
-    const PersonIcon = personIconName ? (getIconComponent(personIconName) || User) : User;
-
-    return (
-      <div key={id} 
-           onClick={(e) => { if (!editMode) { e.stopPropagation(); setShowPersonModal(id); } }}
-           className="group relative flex items-center gap-2 sm:gap-3 pl-1.5 pr-2 sm:pr-5 py-1.5 rounded-full transition-all duration-500 hover:bg-[var(--glass-bg)]" 
-           style={{
-             backgroundColor: 'rgba(255, 255, 255, 0.02)', 
-             boxShadow: isHome ? '0 0 20px rgba(34, 197, 94, 0.05)' : 'none',
-             cursor: editMode ? 'pointer' : 'cursor-pointer'
-           }}>
-        
-        {editMode && (
-           <div className="absolute -top-2 -right-2 z-50 flex gap-1">
-             <button onClick={(e) => { e.stopPropagation(); setShowEditCardModal(id); setEditCardSettingsKey(getCardSettingsKey(id, 'header')); }} className="p-1 rounded-full bg-blue-500 text-white shadow-sm"><Edit2 className="w-3 h-3" /></button>
-             <button onClick={(e) => { e.stopPropagation(); removeCard(id, 'header'); }} className="p-1 rounded-full bg-red-500/60 text-white shadow-sm"><Trash2 className="w-3 h-3" /></button>
-           </div>
-        )}
-        
-        <div className="relative">
-          <div className="w-10 h-10 rounded-full overflow-hidden transition-all duration-500 bg-gray-800" 
-            style={{filter: isHome ? 'grayscale(0%)' : 'grayscale(100%) opacity(0.7)'}}>
-            {useIcon ? (
-              <div className="w-full h-full flex items-center justify-center text-[var(--text-secondary)]">
-                <PersonIcon className="w-5 h-5" />
-              </div>
-            ) : (
-              picture ? (
-                <img src={picture} alt={name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-500">
-                  {name.substring(0, 1)}
-                </div>
-              )
-            )}
-          </div>
-          
-          <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#050505] transition-colors duration-500" 
-            style={{backgroundColor: isHome ? '#22c55e' : '#52525b', borderColor: 'var(--bg-primary)'}}></div>
-           </div>
-
-        <div className="hidden sm:flex flex-col justify-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-[var(--text-primary)] leading-none tracking-wide">{name}</span>
-          </div>
-          <span className="text-xs font-bold uppercase tracking-widest leading-none mt-1 transition-colors duration-300" style={{color: isHome ? '#4ade80' : 'rgba(156, 163, 175, 0.5)'}}>
-            {String(statusText)}
-          </span>
-        </div>
-      </div>
-    );
-  };
+  const personStatus = (id) => (
+    <PersonStatus
+      key={id} id={id} entities={entities} editMode={editMode}
+      customNames={customNames} customIcons={customIcons}
+      cardSettings={cardSettings} getCardSettingsKey={getCardSettingsKey}
+      getEntityImageUrl={getEntityImageUrl} getS={getS}
+      onOpenPerson={(pid) => setShowPersonModal(pid)}
+      onEditCard={(eid, sk) => { setShowEditCardModal(eid); setEditCardSettingsKey(sk); }}
+      onRemoveCard={removeCard} t={t}
+    />
+  );
 
   const pageDefaults = {
     home: { label: t('page.home'), icon: LayoutGrid }
@@ -656,63 +534,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     return t('addCard.noneLeft').replace('{item}', t(itemKey));
   };
 
-  useEffect(() => {
-    if (!conn) return;
-    let cancelled = false;
-    const tempIds = Object.keys(cardSettings)
-      .filter(key => key.includes('::weather_temp_'))
-      .map(key => cardSettings[key]?.tempId)
-      .filter(Boolean);
-
-    const uniqueIds = Array.from(new Set(tempIds));
-
-    const fetchHistoryFor = async (tempId) => {
-      const end = new Date();
-      const start = new Date();
-      start.setHours(start.getHours() - 12);
-      try {
-        const stats = await getStatistics(conn, { start, end, statisticId: tempId, period: '5minute' });
-        if (!cancelled && Array.isArray(stats) && stats.length > 0) {
-          const mapped = stats.map(s => ({ state: s.mean !== null ? s.mean : s.state, last_updated: s.start }));
-          setTempHistoryById(prev => ({ ...prev, [tempId]: mapped }));
-          return;
-        }
-        const historyData = await getHistory(conn, { start, end, entityId: tempId, minimal_response: false, no_attributes: true });
-        if (!cancelled && historyData) {
-          setTempHistoryById(prev => ({ ...prev, [tempId]: historyData }));
-        }
-      } catch (e) {
-        if (!cancelled) console.error("Temp history fetch error", e);
-      }
-    };
-
-    // Fetch all temperature histories immediately
-    uniqueIds.forEach((tempId, index) => {
-      // Stagger fetches to prevent main thread blocking
-      setTimeout(() => fetchHistoryFor(tempId), index * 500 + Math.random() * 200);
-    });
-
-    // Refresh every 5 minutes (300000ms)
-    const refreshInterval = setInterval(() => {
-      if (!cancelled) {
-        uniqueIds.forEach((tempId) => {
-          fetchHistoryFor(tempId);
-        });
-      }
-    }, 300000);
-
-    return () => { 
-      cancelled = true;
-      clearInterval(refreshInterval);
-    };
-  }, [conn, cardSettings]);
-
   const activeGridColumns = gridColumns;
 
   useEffect(() => {
     const updateGridCols = () => {
       const width = window.innerWidth;
-      const mobile = width < 480;
+      const mobile = width < MOBILE_BREAKPOINT;
       setIsMobile(mobile);
 
       if (width >= 1280) setGridColCount(activeGridColumns);
@@ -729,78 +556,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
   const getCardSettingsKey = (cardId, pageId = activePage) => `${pageId}::${cardId}`;
 
-  const isCardRemovable = (cardId, pageId = activePage) => {
-    if (pageId === 'header') return cardId.startsWith('person.');
-    if (pageId === 'settings') {
-      if (['car'].includes(cardId)) return false;
-      if (cardId.startsWith('media_player')) return false;
-      return true;
-    }
-    const settingsKey = getCardSettingsKey(cardId, pageId);
-    const typeSetting = cardSettings[settingsKey]?.type || cardSettings[cardId]?.type;
-    if (typeSetting === 'entity' || typeSetting === 'toggle' || typeSetting === 'sensor') return true;
-    if (cardId.startsWith('light_')) return true;
-    if (cardId.startsWith('light.')) return true;
-    if (cardId.startsWith('vacuum.')) return true;
-    if (cardId === 'media_player') return true;
-    if (cardId.startsWith('media_player.')) return true;
-    if (cardId.startsWith('media_group_')) return true;
-    if (cardId.startsWith('weather_temp_')) return true;
-    if (cardId.startsWith('calendar_card_')) return true;
-    if (cardId.startsWith('climate_card_')) return true;
-    if (cardId.startsWith('cost_card_')) return true;
-    if (cardId.startsWith('androidtv_card_')) return true;
-    if (cardId.startsWith('car_card_')) return true;
-    if (cardId.startsWith('nordpool_card_')) return true;
-    return false;
-  };
+  const resolveCarSettings = (_cardId, settings = {}) => settings;
 
-  const isCardHiddenByLogic = (cardId) => {
-    if (cardId === 'media_player') {
-      return true;
-    }
-
-    if (cardId.startsWith('media_group_')) {
-      const settingsKey = getCardSettingsKey(cardId);
-      const groupSettings = cardSettings[settingsKey] || cardSettings[cardId] || {};
-      const selectedIds = Array.isArray(groupSettings.mediaIds) ? groupSettings.mediaIds : [];
-      const hasEntities = selectedIds.some(id => entities[id]);
-      return !hasEntities;
-    }
-
-    if (activePage === 'settings' && !['car'].includes(cardId) && !cardId.startsWith('light_') && !cardId.startsWith('media_player')) {
-        return !entities[cardId];
-    }
-
-    const isSpecialCard = cardId === 'car' || 
-      cardId.startsWith('media_group_') || 
-      cardId.startsWith('weather_temp_') || 
-      cardId.startsWith('calendar_card_') || 
-      cardId.startsWith('climate_card_') || 
-      cardId.startsWith('cost_card_') || 
-      cardId.startsWith('androidtv_card_') || 
-      cardId.startsWith('car_card_') ||
-      cardId.startsWith('nordpool_card_');
-
-    if (!isSpecialCard && !entities[cardId]) {
-       if (cardId.startsWith('light_') || cardId.startsWith('light.')) return false;
-       return true;
-    }
-
-    return false;
-  };
-
-  const isMediaPage = (pageId) => {
-    if (!pageId) return false;
-    const settings = pageSettings[pageId];
-    return settings?.type === 'media' || settings?.type === 'sonos' || pageId.startsWith('media') || pageId.startsWith('sonos');
-  };
-
-  const isToggleEntity = (id) => {
-    const domain = id?.split('.')?.[0];
-    const toggleDomains = ['automation', 'switch', 'input_boolean', 'script', 'fan'];
-    return toggleDomains.includes(domain);
-  };
+  const cardUtilCtx = { getCardSettingsKey, cardSettings, entities, activePage };
+  const isCardRemovable = (cardId, pageId = activePage) => _isCardRemovable(cardId, pageId, cardUtilCtx);
+  const isCardHiddenByLogic = (cardId) => _isCardHiddenByLogic(cardId, cardUtilCtx);
+  const isMediaPage = (pageId) => _isMediaPage(pageId, pageSettings);
 
   const removeCard = (cardId, listName = activePage) => {
     const newConfig = { ...pagesConfig };
@@ -889,198 +650,28 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     setEditingPage(null);
   };
 
-  const handleAddSelected = () => {
-    const newConfig = { ...pagesConfig };
-    if (addCardTargetPage === 'header') {
-      newConfig.header = [...(newConfig.header || []), ...selectedEntities];
-      persistConfig(newConfig);
-      setSelectedEntities([]);
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'weather') {
-      if (!selectedWeatherId) return;
-      const cardId = `weather_temp_${Date.now()}`;
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-      persistConfig(newConfig);
-
-      const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-      const newSettings = { ...cardSettings, [settingsKey]: { ...(cardSettings[settingsKey] || {}), weatherId: selectedWeatherId, tempId: selectedTempId || null } };
-      persistCardSettings(newSettings);
-
-      setSelectedWeatherId(null);
-      setSelectedTempId(null);
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'calendar') {
-        const cardId = selectedEntities.length === 1 && selectedEntities[0].startsWith('calendar_card_') 
-            ? selectedEntities[0] 
-            : `calendar_card_${Date.now()}`;
-            
-        newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-        persistConfig(newConfig);
-        
-        setShowAddCardModal(false);
-        return;
-    }
-
-    if (addCardType === 'media') {
-      if (selectedEntities.length === 0) return;
-      const cardId = `media_group_${Date.now()}`;
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-      persistConfig(newConfig);
-
-      const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-      const newSettings = { ...cardSettings, [settingsKey]: { ...(cardSettings[settingsKey] || {}), mediaIds: selectedEntities } };
-      persistCardSettings(newSettings);
-
-      setSelectedEntities([]);
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'climate') {
-      if (selectedEntities.length === 0) return;
-      
-      const newCardIds = [];
-      const newSettings = { ...cardSettings };
-      
-      selectedEntities.forEach((entityId) => {
-        const cardId = `climate_card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        newCardIds.push(cardId);
-        const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-        newSettings[settingsKey] = { ...(newSettings[settingsKey] || {}), climateId: entityId };
-      });
-      
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), ...newCardIds];
-      persistConfig(newConfig);
-      
-      persistCardSettings(newSettings);
-
-      setSelectedEntities([]);
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'androidtv') {
-      if (!selectedAndroidTVMediaId) return;
-      const cardId = `androidtv_card_${Date.now()}`;
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-      persistConfig(newConfig);
-
-      const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-      const newSettings = {
-        ...cardSettings,
-        [settingsKey]: { 
-          ...(cardSettings[settingsKey] || {}), 
-          mediaPlayerId: selectedAndroidTVMediaId,
-          remoteId: selectedAndroidTVRemoteId || null
-        }
-      };
-      persistCardSettings(newSettings);
-
-      setSelectedAndroidTVMediaId(null);
-      setSelectedAndroidTVRemoteId(null);
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'cost') {
-      if (!selectedCostTodayId || !selectedCostMonthId) return;
-      const cardId = `cost_card_${Date.now()}`;
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-      persistConfig(newConfig);
-
-      const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-      const newSettings = {
-        ...cardSettings,
-        [settingsKey]: {
-          ...(cardSettings[settingsKey] || {}),
-          todayId: selectedCostTodayId,
-          monthId: selectedCostMonthId
-        }
-      };
-      persistCardSettings(newSettings);
-
-      setSelectedCostTodayId(null);
-      setSelectedCostMonthId(null);
-      setCostSelectionTarget('today');
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'nordpool') {
-      if (!selectedNordpoolId) return;
-      const cardId = `nordpool_card_${Date.now()}`;
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-      persistConfig(newConfig);
-
-      const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-      const newSettings = {
-        ...cardSettings,
-        [settingsKey]: {
-          ...(cardSettings[settingsKey] || {}),
-          nordpoolId: selectedNordpoolId,
-          decimals: nordpoolDecimals
-        }
-      };
-      persistCardSettings(newSettings);
-
-      setSelectedNordpoolId(null);
-      setNordpoolDecimals(2);
-      setShowAddCardModal(false);
-      return;
-    }
-
-    if (addCardType === 'car') {
-      const cardId = `car_card_${Date.now()}`;
-      newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
-      persistConfig(newConfig);
-
-      const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
-      const newSettings = {
-        ...cardSettings,
-        [settingsKey]: { ...(cardSettings[settingsKey] || {}), type: 'car', size: 'large' }
-      };
-      persistCardSettings(newSettings);
-
-      setShowAddCardModal(false);
-      setShowEditCardModal(cardId);
-      setEditCardSettingsKey(settingsKey);
-      return;
-    }
-
-    if (addCardType === 'entity' || addCardType === 'toggle' || addCardType === 'sensor') {
-      const newSettings = { ...cardSettings };
-      selectedEntities.forEach((id) => {
-        const settingsKey = getCardSettingsKey(id, addCardTargetPage);
-        newSettings[settingsKey] = { ...(newSettings[settingsKey] || {}), type: addCardType, size: newSettings[settingsKey]?.size || 'large' };
-      });
-      persistCardSettings(newSettings);
-    }
-
-    newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), ...selectedEntities];
-    persistConfig(newConfig);
-    setSelectedEntities([]);
-    setShowAddCardModal(false);
-  };
+  const onAddSelected = () => handleAddSelected({
+    pagesConfig, persistConfig, addCardTargetPage, addCardType,
+    selectedEntities, selectedWeatherId, selectedTempId,
+    selectedAndroidTVMediaId, selectedAndroidTVRemoteId,
+    selectedCostTodayId, selectedCostMonthId,
+    selectedNordpoolId, nordpoolDecimals,
+    cardSettings, persistCardSettings, getCardSettingsKey,
+    setSelectedEntities, setShowAddCardModal,
+    setSelectedWeatherId, setSelectedTempId,
+    setSelectedAndroidTVMediaId, setSelectedAndroidTVRemoteId,
+    setSelectedCostTodayId, setSelectedCostMonthId,
+    setCostSelectionTarget, setSelectedNordpoolId,
+    setNordpoolDecimals, saveCardSetting,
+    setShowEditCardModal, setEditCardSettingsKey
+  });
 
 
   const renderSensorCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => {
     const entity = entities[cardId];
     if (!entity) {
       if (editMode) {
-        return (
-          <div key={cardId} {...dragProps} className="touch-feedback relative rounded-3xl overflow-hidden bg-[var(--card-bg)] border border-dashed border-red-500/50 flex flex-col items-center justify-center p-4 h-full" style={cardStyle}>
-            {getControls(cardId)}
-            <AlertTriangle className="w-8 h-8 text-red-500 mb-2 opacity-80" />
-            <p className="text-xs font-bold text-red-500 text-center uppercase tracking-widest">{t('common.missing')}</p>
-            <p className="text-[10px] text-red-400/70 text-center mt-1 font-mono break-all line-clamp-2">{cardId}</p>
-          </div>
-        );
+        return <MissingEntityCard cardId={cardId} dragProps={dragProps} controls={getControls(cardId)} cardStyle={cardStyle} t={t} />;
       }
       return null;
     }
@@ -1130,57 +721,19 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
   // --- CARD RENDERERS ---
   
-  const renderLightCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => {
-    const entity = entities[cardId];
-    const DefaultIcon = Lightbulb;
-    const lightIconName = customIcons[cardId] || entity?.attributes?.icon;
-    const LightIcon = lightIconName ? (getIconComponent(lightIconName) || DefaultIcon) : DefaultIcon;
-    const state = entity?.state;
-    const isUnavailable = state === 'unavailable' || state === 'unknown' || !state;
-    const isOn = state === "on";
-    const br = getA(cardId, "brightness") || 0;
-    const subEntities = getA(cardId, "entity_id", []);
-    const activeCount = subEntities.filter(id => entities[id]?.state === 'on').length;
-    const totalCount = subEntities.length;
-    const name = customNames[cardId] || getA(cardId, "friendly_name");
-
-    const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
-    const isSmall = sizeSetting === 'small';
-
-    if (isSmall) {
-      return (
-        <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) setShowLightModal(cardId); }} className={`touch-feedback p-4 pl-5 rounded-3xl flex items-center gap-4 transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'} ${isUnavailable ? 'opacity-70' : ''}`} style={cardStyle}>
-          {getControls(cardId)}
-          
-          <button 
-            onClick={(e) => { e.stopPropagation(); if (!isUnavailable) callService("light", isOn ? "turn_off" : "turn_on", { entity_id: cardId }); }} 
-            className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all duration-500 ${isOn ? 'bg-amber-500/20 text-amber-400' : 'bg-[var(--glass-bg)] text-[var(--text-muted)] hover:bg-[var(--glass-bg-hover)]'}`} 
-            disabled={isUnavailable}
-          >
-            <LightIcon className={`w-6 h-6 stroke-[1.5px] ${isOn ? 'fill-amber-400/20' : ''}`} />
-          </button>
-
-          <div className="flex-1 flex flex-col gap-3 min-w-0 justify-center h-full pt-1">
-            <div className="flex justify-between items-baseline pr-1">
-              <p className="text-[var(--text-secondary)] text-xs tracking-widest uppercase font-bold opacity-60 truncate leading-none">{String(name || t('common.light'))}</p>
-              <span className={`text-xs uppercase font-bold tracking-widest leading-none transition-colors ${isOn ? 'text-amber-400' : 'text-[var(--text-secondary)] opacity-50'}`}>{isOn ? `${Math.round(((optimisticLightBrightness[cardId] ?? br) / 255) * 100)}%` : t('common.off')}</span>
-            </div>
-            <div className="w-full">
-               <M3Slider variant="thinLg" min={0} max={255} step={1} value={optimisticLightBrightness[cardId] ?? br} disabled={!isOn || isUnavailable} onChange={(e) => { const val = parseInt(e.target.value); setOptimisticLightBrightness(prev => ({ ...prev, [cardId]: val })); callService("light", "turn_on", { entity_id: cardId, brightness: val }); }} colorClass="bg-amber-500" />
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) setShowLightModal(cardId); }} className={`touch-feedback p-7 rounded-3xl flex flex-col justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-98' : 'cursor-move'} ${isUnavailable ? 'opacity-70' : ''}`} style={cardStyle}>
-        {getControls(cardId)}
-        <div className="flex justify-between items-start"><button onClick={(e) => { e.stopPropagation(); if (!isUnavailable) callService("light", isOn ? "turn_off" : "turn_on", { entity_id: cardId }); }} className={`p-3 rounded-2xl transition-all duration-500 ${isOn ? 'bg-amber-500/20 text-amber-400' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'}`} disabled={isUnavailable}><LightIcon className={`w-5 h-5 stroke-[1.5px] ${isOn ? 'fill-amber-400/20' : ''}`} /></button><div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all ${isUnavailable ? 'bg-red-500/10 border-red-500/20 text-red-500' : (isOn ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-secondary)]')}`}><span className="text-xs tracking-widest uppercase font-bold">{isUnavailable ? t('status.unavailable') : (totalCount > 0 ? (activeCount > 0 ? `${activeCount}/${totalCount}` : t('common.off')) : (isOn ? t('common.on') : t('common.off')))}</span></div></div>
-        <div className="mt-2 font-sans"><p className="text-[var(--text-secondary)] text-[10px] tracking-[0.2em] uppercase mb-0.5 font-bold opacity-60 leading-none">{String(name || t('common.light'))}</p><div className="flex items-baseline gap-1 leading-none"><span className="text-4xl font-medium text-[var(--text-primary)] leading-none">{isUnavailable ? "--" : (isOn ? Math.round(((optimisticLightBrightness[cardId] ?? br) / 255) * 100) : "0")}</span><span className="text-[var(--text-muted)] font-medium text-base ml-1">%</span></div><M3Slider min={0} max={255} step={1} value={optimisticLightBrightness[cardId] ?? br} disabled={!isOn || isUnavailable} onChange={(e) => { const val = parseInt(e.target.value); setOptimisticLightBrightness(prev => ({ ...prev, [cardId]: val })); callService("light", "turn_on", { entity_id: cardId, brightness: val }); }} colorClass="bg-amber-500" /></div>
-      </div>
-    );
-  };
+  const renderLightCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => (
+    <LightCard
+      key={cardId} cardId={cardId} dragProps={dragProps} controls={getControls(cardId)}
+      cardStyle={cardStyle} entities={entities} editMode={editMode}
+      cardSettings={cardSettings} settingsKey={settingsKey}
+      customNames={customNames} customIcons={customIcons}
+      getA={getA} callService={callService}
+      onOpen={() => { if (!editMode) setShowLightModal(cardId); }}
+      optimisticLightBrightness={optimisticLightBrightness}
+      setOptimisticLightBrightness={setOptimisticLightBrightness}
+      t={t}
+    />
+  );
 
   const renderAutomationCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => {
     const settings = cardSettings[settingsKey] || cardSettings[cardId] || {};
@@ -1203,379 +756,57 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   };
 
 
-  const resolveCarSettings = (cardId, settings = {}) => {
-    return settings;
+  const renderCarCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => (
+    <CarCard
+      key={cardId} cardId={cardId} dragProps={dragProps} controls={getControls(cardId)}
+      cardStyle={cardStyle} entities={entities} editMode={editMode}
+      cardSettings={cardSettings} settingsKey={settingsKey}
+      customNames={customNames} customIcons={customIcons}
+      getS={getS} getA={getA} callService={callService}
+      onOpen={() => { if (!editMode) setActiveCarModal(cardId); }}
+      isMobile={isMobile} t={t}
+    />
+  );
+
+  const renderVacuumCard = (vacuumId, dragProps, getControls, cardStyle, settingsKey) => (
+    <VacuumCard
+      key={vacuumId} vacuumId={vacuumId} dragProps={dragProps} controls={getControls(vacuumId)}
+      cardStyle={cardStyle} entities={entities} editMode={editMode}
+      cardSettings={cardSettings} settingsKey={settingsKey}
+      customNames={customNames} customIcons={customIcons}
+      getA={getA} callService={callService}
+      onOpen={() => { if (!editMode) { setActiveVacuumId(vacuumId); setShowVacuumModal(true); } }}
+      isMobile={isMobile} t={t}
+    />
+  );
+
+  const openMediaModal = (mpId, groupKey, groupIds) => {
+    setActiveMediaId(mpId);
+    setActiveMediaGroupKey(groupKey);
+    setActiveMediaGroupIds(groupIds);
+    setActiveMediaModal('media');
   };
 
-  const getSafeState = (id) => {
-    const state = id ? entities[id]?.state : null;
-    if (!state || state === 'unavailable' || state === 'unknown') return null;
-    return state;
-  };
+  const renderMediaPlayerCard = (mpId, dragProps, getControls, cardStyle) => (
+    <MediaPlayerCard
+      key={mpId} mpId={mpId} dragProps={dragProps} controls={getControls(mpId)}
+      cardStyle={cardStyle} entities={entities} editMode={editMode}
+      customNames={customNames} getA={getA} getEntityImageUrl={getEntityImageUrl}
+      callService={callService} isMediaActive={isMediaActive}
+      onOpen={openMediaModal} t={t}
+    />
+  );
 
-  const getNumberState = (id) => {
-    const state = getSafeState(id);
-    if (state === null) return null;
-    const value = parseFloat(state);
-    return Number.isFinite(value) ? value : null;
-  };
-
-  const renderCarCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => {
-    const settings = resolveCarSettings(cardId, cardSettings[settingsKey] || cardSettings[cardId] || {});
-    const batteryId = settings.batteryId;
-    const rangeId = settings.rangeId;
-    const locationId = settings.locationId;
-    const chargingId = settings.chargingId;
-    const pluggedId = settings.pluggedId;
-    const climateId = settings.climateId;
-    const tempId = settings.tempId;
-
-    const batteryValue = getNumberState(batteryId);
-    const rangeValue = getNumberState(rangeId);
-    const climateTempValueRaw = climateId ? getA(climateId, 'current_temperature') : null;
-    const climateTempValue = climateTempValueRaw !== null && climateTempValueRaw !== undefined
-      ? parseFloat(climateTempValueRaw)
-      : null;
-    const tempValue = getNumberState(tempId) ?? (Number.isFinite(climateTempValue) ? climateTempValue : null);
-    const locationLabel = locationId ? getS(locationId) : null;
-
-    const chargingState = getSafeState(chargingId);
-    const pluggedState = getSafeState(pluggedId);
-    const climateEntity = climateId ? entities[climateId] : null;
-
-    const isCharging = chargingState === 'on' || chargingState === 'charging';
-    const isPlugged = pluggedState === 'on' || pluggedState === 'plugged' || pluggedState === 'true';
-    const isHtg = climateEntity && !['off', 'unavailable', 'unknown'].includes(climateEntity.state);
-
-    const name = customNames[cardId] || t('car.defaultName');
-    const Icon = customIcons[cardId] ? (getIconComponent(customIcons[cardId]) || Car) : Car;
-    const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
-    const isSmall = sizeSetting === 'small';
-
-    if (isSmall) {
-      const statusLabel = isCharging
-        ? t('car.charging')
-        : (locationLabel ? String(locationLabel) : t('common.off'));
-      return (
-        <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) setActiveCarModal(cardId); }} className={`touch-feedback p-4 pl-5 rounded-3xl flex items-center justify-between gap-4 transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`} style={{...cardStyle, backgroundColor: isHtg ? 'rgba(249, 115, 22, 0.06)' : 'var(--card-bg)', borderColor: editMode ? 'rgba(59, 130, 246, 0.2)' : (isHtg ? 'rgba(249, 115, 22, 0.2)' : 'var(--card-border)')}}>
-          {getControls(cardId)}
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all ${isHtg ? 'bg-orange-500/20 text-orange-400 animate-pulse' : (isCharging ? 'bg-green-500/15 text-green-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]')}`}>
-              <Icon className="w-6 h-6 stroke-[1.5px]" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-[var(--text-secondary)] text-xs tracking-widest uppercase font-bold opacity-60 truncate leading-none mb-1.5">{name}</p>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm font-bold ${isCharging ? 'text-green-400' : 'text-[var(--text-primary)]'}`}>
-                  {batteryValue !== null ? `${Math.round(batteryValue)}%` : '--'}
-                </span>
-                {rangeValue !== null && (
-                  <span className="text-xs text-[var(--text-secondary)]">{Math.round(rangeValue)}km</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all ${isHtg ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : (isCharging ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-secondary)]')}`}>
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              {statusLabel}
-            </span>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) setActiveCarModal(cardId); }} className={`touch-feedback p-7 rounded-3xl flex flex-col justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-98' : 'cursor-move'}`} style={{...cardStyle, backgroundColor: isHtg ? 'rgba(249, 115, 22, 0.08)' : 'var(--card-bg)', borderColor: editMode ? 'rgba(59, 130, 246, 0.2)' : (isHtg ? 'rgba(249, 115, 22, 0.3)' : 'var(--card-border)')}}>
-        {getControls(cardId)}
-        <div className="flex justify-between items-start font-sans">
-          <div className={`p-3 rounded-2xl transition-all ${isHtg ? 'bg-orange-500/20 text-orange-400 animate-pulse' : (isCharging ? 'bg-green-500/15 text-green-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]')}`}><Icon className="w-5 h-5 stroke-[1.5px]" /></div>
-          <div className="flex flex-col items-end gap-2">
-            {locationLabel && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-secondary)]"><MapPin className="w-3 h-3" /><span className="text-xs tracking-widest font-bold uppercase">{String(locationLabel)}</span></div>
-            )}
-            {tempValue !== null && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-secondary)]"><Thermometer className="w-3 h-3" /><span className="text-xs tracking-widest font-bold uppercase">{Math.round(tempValue)}°</span></div>
-            )}
-            {isHtg && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-orange-500/10 border-orange-500/20 text-orange-400 animate-pulse"><Flame className="w-3 h-3" /><span className="text-xs tracking-widest font-bold uppercase">{t('car.heating')}</span></div>}
-          </div>
-        </div>
-        <div className="flex justify-between items-end">
-          <div>
-            <p className="text-[var(--text-secondary)] text-xs tracking-widest uppercase mb-1 font-bold opacity-60">{name}</p>
-            <div className="flex items-baseline gap-2 leading-none font-sans">
-              <span className={`text-2xl font-medium leading-none ${isCharging ? 'text-green-400' : 'text-[var(--text-primary)]'}`}>
-                {batteryValue !== null ? `${Math.round(batteryValue)}%` : '--'}
-              </span>
-              {isCharging && <Zap className="w-5 h-5 text-green-400 animate-pulse -ml-1 mb-1" fill="currentColor" />}
-              {rangeValue !== null && (
-                <span className="text-[var(--text-muted)] font-medium text-base ml-1">{Math.round(rangeValue)}km</span>
-              )}
-            </div>
-            {pluggedId && (
-              <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mt-2 font-bold opacity-60">
-                {isPlugged ? t('car.pluggedIn') : t('car.unplugged')}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderVacuumCard = (vacuumId, dragProps, getControls, cardStyle, settingsKey) => {
-    const entity = entities[vacuumId];
-    if (!entity) {
-      if (editMode) {
-        return (
-          <div key={vacuumId} {...dragProps} className="touch-feedback relative rounded-3xl overflow-hidden bg-[var(--card-bg)] border border-dashed border-red-500/50 flex flex-col items-center justify-center p-4 h-full" style={cardStyle}>
-            {getControls(vacuumId)}
-            <AlertTriangle className="w-8 h-8 text-red-500 mb-2 opacity-80" />
-            <p className="text-xs font-bold text-red-500 text-center uppercase tracking-widest">{t('common.missing')}</p>
-            <p className="text-[10px] text-red-400/70 text-center mt-1 font-mono break-all line-clamp-2">{vacuumId}</p>
-          </div>
-        );
-      }
-      return null;
-    }
-
-    const settings = cardSettings[settingsKey] || cardSettings[vacuumId] || {};
-    const isSmall = settings.size === 'small';
-    const state = entity?.state;
-    const isUnavailable = state === 'unavailable' || state === 'unknown' || !state;
-    const battery = getA(vacuumId, "battery_level");
-    const room = getA(vacuumId, "current_room") || getA(vacuumId, "room");
-    const name = customNames[vacuumId] || getA(vacuumId, "friendly_name", t('vacuum.name'));
-    const vacuumIconName = customIcons[vacuumId] || entity?.attributes?.icon;
-    const Icon = vacuumIconName ? (getIconComponent(vacuumIconName) || Bot) : Bot;
-    const statusText = (() => {
-      if (state === "cleaning") return t('vacuum.cleaning');
-      if (state === "returning") return t('vacuum.returning');
-      if ((state === "charging" || state === "docked") && battery === 100) return t('vacuum.docked');
-      if (state === "docked") return t('vacuum.charging');
-      if (state === "idle") return t('vacuum.idle');
-      return state || t('vacuum.unknown');
-    })();
-
-    const showRoom = !!room;
-    const showBattery = typeof battery === 'number';
-
-    if (isSmall) {
-      return (
-        <div key={vacuumId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) { setActiveVacuumId(vacuumId); setShowVacuumModal(true); } }} className={`touch-feedback ${isMobile ? 'p-3 pl-4 gap-2' : 'p-4 pl-5 gap-4'} rounded-3xl flex items-center justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'} ${isUnavailable ? 'opacity-70' : ''}`} style={{...cardStyle, backgroundColor: state === "cleaning" ? 'rgba(59, 130, 246, 0.08)' : 'var(--card-bg)', borderColor: editMode ? 'rgba(59, 130, 246, 0.2)' : (state === "cleaning" ? 'rgba(59, 130, 246, 0.3)' : 'var(--card-border)'), containerType: 'inline-size'}}>
-          {getControls(vacuumId)}
-          <div className={`flex items-center ${isMobile ? 'gap-3' : 'gap-4'} flex-1 min-w-0`}>
-            <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all ${state === "cleaning" ? 'bg-blue-500/20 text-blue-400 animate-pulse' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'}`}>
-              <Icon className="w-6 h-6 stroke-[1.5px]" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-[var(--text-secondary)] text-xs tracking-widest uppercase font-bold opacity-60 whitespace-normal break-words leading-none mb-1.5">{name}</p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-[var(--text-primary)] leading-none">{statusText}</span>
-                {showBattery && <span className="text-xs text-[var(--text-secondary)]">{battery}%</span>}
-              </div>
-            </div>
-          </div>
-          <div className="vacuum-card-controls shrink-0">
-            <button onClick={(e) => { e.stopPropagation(); if (!isUnavailable) callService("vacuum", state === "cleaning" ? "pause" : "start", { entity_id: vacuumId }); }} className="w-8 h-8 flex items-center justify-center rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] border border-[var(--glass-border)] transition-colors text-[var(--text-primary)] active:scale-95">
-              {state === "cleaning" ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); if (!isUnavailable) callService("vacuum", "return_to_base", { entity_id: vacuumId }); }} className="w-8 h-8 flex items-center justify-center rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] border border-[var(--glass-border)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95">
-              <Home className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={vacuumId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) { setActiveVacuumId(vacuumId); setShowVacuumModal(true); } }} className={`touch-feedback ${isMobile ? 'p-5' : 'p-7'} rounded-3xl flex flex-col justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-98' : 'cursor-move'} ${isUnavailable ? 'opacity-70' : ''}`} style={{...cardStyle, backgroundColor: state === "cleaning" ? 'rgba(59, 130, 246, 0.08)' : 'var(--card-bg)', borderColor: editMode ? 'rgba(59, 130, 246, 0.2)' : (state === "cleaning" ? 'rgba(59, 130, 246, 0.3)' : 'var(--card-border)')}}>
-        {getControls(vacuumId)}
-        <div className="flex justify-between items-start font-sans">
-           <div className={`rounded-2xl transition-all ${isMobile ? 'p-2.5' : 'p-3'} ${state === "cleaning" ? 'bg-blue-500/20 text-blue-400 animate-pulse' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'}`}><Icon className="w-5 h-5 stroke-[1.5px]" /></div>
-           <div className="flex flex-col items-end gap-2">
-             {showRoom && (
-               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-secondary)]"><MapPin className="w-3 h-3" /><span className="text-xs tracking-widest font-bold uppercase">{room}</span></div>
-             )}
-             {showBattery && (
-               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-secondary)]"><Battery className="w-3 h-3" /><span className="text-xs tracking-widest font-bold uppercase">{battery}%</span></div>
-             )}
-           </div>
-        </div>
-        
-        <div className="flex justify-between items-end">
-           <div>
-             <p className="text-[var(--text-secondary)] text-xs tracking-widest uppercase mb-1 font-bold opacity-60">{name}</p>
-             <h3 className="text-2xl font-medium text-[var(--text-primary)] leading-none">{statusText}</h3>
-           </div>
-           <div className="flex gap-2">
-             <button onClick={(e) => { e.stopPropagation(); if (!isUnavailable) callService("vacuum", state === "cleaning" ? "pause" : "start", { entity_id: vacuumId }); }} className={`${isMobile ? 'p-2.5' : 'p-3'} rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] border border-[var(--glass-border)] transition-colors text-[var(--text-primary)] active:scale-95`}>
-               {state === "cleaning" ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
-             </button>
-             <button onClick={(e) => { e.stopPropagation(); if (!isUnavailable) callService("vacuum", "return_to_base", { entity_id: vacuumId }); }} className={`${isMobile ? 'p-2.5' : 'p-3'} rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] border border-[var(--glass-border)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95`}>
-               <Home className="w-5 h-5" />
-             </button>
-           </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderMediaPlayerCard = (mpId, dragProps, getControls, cardStyle) => {
-    const entity = entities[mpId];
-    if (!entity) {
-      if (editMode) {
-        return (
-          <div key={mpId} {...dragProps} className="touch-feedback relative rounded-3xl overflow-hidden bg-[var(--card-bg)] border border-dashed border-red-500/50 flex flex-col items-center justify-center p-4 h-full" style={cardStyle}>
-            {getControls(mpId)}
-            <AlertTriangle className="w-8 h-8 text-red-500 mb-2 opacity-80" />
-            <p className="text-xs font-bold text-red-500 text-center uppercase tracking-widest">{t('common.missing')}</p>
-            <p className="text-[10px] text-red-400/70 text-center mt-1 font-mono break-all line-clamp-2">{mpId}</p>
-          </div>
-        );
-      }
-      return null;
-    }
-
-    const mpState = entity?.state;
-    const isPlaying = mpState === 'playing';
-    const isActive = isMediaActive(entity);
-    const name = customNames[mpId] || getA(mpId, 'friendly_name', 'Media Player');
-    const title = getA(mpId, 'media_title') || (isActive ? t('status.active') : t('media.noneMedia'));
-    const subtitle = getA(mpId, 'media_artist') || getA(mpId, 'media_series_title') || getA(mpId, 'media_album_name') || '';
-    const picture = getEntityImageUrl(entity?.attributes?.entity_picture);
-    const isChannel = getA(mpId, 'media_content_type') === 'channel';
-
-    if (!isActive) {
-      return (
-        <div key={mpId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) { setActiveMediaId(mpId); setActiveMediaGroupKey(null); setActiveMediaGroupIds(null); setActiveMediaModal('media'); } }} className={`touch-feedback p-7 rounded-3xl flex flex-col justify-center items-center transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`} style={{...cardStyle, color: 'var(--text-primary)'}}>
-          {getControls(mpId)}
-          <div className="p-5 rounded-full mb-4" style={{backgroundColor: 'var(--glass-bg)'}}>
-            {isChannel ? <Tv className="w-8 h-8 text-[var(--text-secondary)]" /> : <Speaker className="w-8 h-8 text-[var(--text-secondary)]" />}
-          </div>
-          <div className="text-center w-full px-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-60">{t('media.noneMusic')}</p>
-            <div className="flex items-center justify-center gap-2 mt-1"><p className="text-xs uppercase tracking-widest text-[var(--text-muted)] opacity-40 truncate">{name}</p></div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={mpId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) { setActiveMediaId(mpId); setActiveMediaGroupKey(null); setActiveMediaGroupIds(null); setActiveMediaModal('media'); } }} className={`touch-feedback p-7 rounded-3xl flex flex-col justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`} style={{...cardStyle, color: picture ? 'white' : 'var(--text-primary)'}}>
-        {getControls(mpId)}
-        {picture && (
-          <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-            <img src={picture} alt="" className={`w-full h-full object-cover blur-xl scale-150 transition-transform duration-[10s] ease-in-out ${isPlaying ? 'scale-[1.6]' : 'scale-150'}`} />
-            <div className="absolute inset-0 bg-black/20" />
-          </div>
-        )}
-        <div className="relative z-10 flex gap-4 items-start">
-          <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-lg">
-            {picture ? <img src={picture} alt="Cover" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center">{isChannel ? <Tv className="w-8 h-8 text-[var(--text-secondary)]" /> : <Speaker className="w-8 h-8 text-[var(--text-secondary)]" />}</div>}
-          </div>
-          <div className="flex flex-col overflow-hidden pt-1">
-            <div className="flex items-center gap-2 mb-1"><p className="text-xs font-bold uppercase tracking-widest text-blue-400 truncate">{name}</p></div>
-            <h3 className="text-lg font-bold leading-tight truncate mb-0.5">{title || t('common.unknown')}</h3>
-            {subtitle && <p className={`${picture ? 'text-gray-400' : 'text-[var(--text-secondary)]'} text-xs truncate font-medium`}>{subtitle}</p>}
-          </div>
-        </div>
-        <div className="relative z-10 flex items-center justify-center gap-8 mt-2">
-          <button onClick={(e) => { e.stopPropagation(); callService("media_player", "media_previous_track", { entity_id: mpId }); }} className={`${picture ? 'text-gray-400 hover:text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'} transition-colors p-2 active:scale-90`}><SkipBack className="w-6 h-6" /></button>
-          <button onClick={(e) => { e.stopPropagation(); callService("media_player", "media_play_pause", { entity_id: mpId }); }} className="w-12 h-12 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 transition-transform shadow-lg active:scale-95">{isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}</button>
-          <button onClick={(e) => { e.stopPropagation(); callService("media_player", "media_next_track", { entity_id: mpId }); }} className={`${picture ? 'text-gray-400 hover:text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'} transition-colors p-2 active:scale-90`}><SkipForward className="w-6 h-6" /></button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderMediaGroupCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => {
-    const groupSettings = cardSettings[settingsKey] || {};
-    const mediaIds = Array.isArray(groupSettings.mediaIds) ? groupSettings.mediaIds : [];
-    const mediaEntities = mediaIds.map(id => entities[id]).filter(Boolean);
-
-    if (mediaEntities.length === 0) return null;
-
-    const activeEntities = mediaEntities.filter(isMediaActive);
-    const playingEntities = mediaEntities.filter(e => e.state === 'playing');
-    const pool = activeEntities.length > 0 ? activeEntities : mediaEntities;
-    const cyclePool = playingEntities.length > 1 ? playingEntities : (activeEntities.length > 1 ? activeEntities : pool);
-
-    let currentMp = pool.find(e => e.entity_id === groupSettings.activeId);
-    if (!currentMp) currentMp = (playingEntities[0] || pool[0]);
-
-    if (!currentMp) return null;
-
-    const mpId = currentMp.entity_id;
-    const mpState = currentMp.state;
-    const isPlaying = mpState === 'playing';
-    const isActive = activeEntities.length > 0;
-    const name = customNames[cardId] || getA(mpId, 'friendly_name', 'Musikk');
-    const title = getA(mpId, 'media_title') || (isActive ? t('status.active') : t('media.noneMusic'));
-    const subtitle = getA(mpId, 'media_artist') || getA(mpId, 'media_series_title') || getA(mpId, 'media_album_name') || '';
-    const picture = getEntityImageUrl(currentMp.attributes?.entity_picture);
-    const isChannel = getA(mpId, 'media_content_type') === 'channel';
-
-    const cyclePlayers = (e) => {
-      e.stopPropagation();
-      if (cyclePool.length < 2) return;
-      const idx = cyclePool.findIndex(e => e.entity_id === mpId);
-      const next = cyclePool[(idx + 1) % cyclePool.length];
-      saveCardSetting(settingsKey, 'activeId', next.entity_id);
-    };
-
-    if (!isActive) {
-      return (
-        <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) { setActiveMediaId(mpId); setActiveMediaGroupKey(settingsKey); setActiveMediaGroupIds(null); setActiveMediaModal('media'); } }} className={`touch-feedback p-7 rounded-3xl flex flex-col justify-center items-center transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`} style={{...cardStyle, color: 'var(--text-primary)'}}>
-          {getControls(cardId)}
-          <div className="p-5 rounded-full mb-4" style={{backgroundColor: 'var(--glass-bg)'}}>
-            {isChannel ? <Tv className="w-8 h-8 text-[var(--text-secondary)]" /> : <Speaker className="w-8 h-8 text-[var(--text-secondary)]" />}
-          </div>
-          <div className="text-center w-full px-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-60">{t('media.noneMusic')}</p>
-            <div className="flex items-center justify-center gap-2 mt-1"><p className="text-xs uppercase tracking-widest text-[var(--text-muted)] opacity-40 truncate">{name}</p></div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} onClick={(e) => { e.stopPropagation(); if (!editMode) { setActiveMediaId(mpId); setActiveMediaGroupKey(settingsKey); setActiveMediaGroupIds(null); setActiveMediaModal('media'); } }} className={`touch-feedback p-7 rounded-3xl flex flex-col justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`} style={{...cardStyle, color: picture ? 'white' : 'var(--text-primary)'}}>
-        {getControls(cardId)}
-        {cyclePool.length > 1 && (
-          <button onClick={cyclePlayers} className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-colors backdrop-blur-md">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            <span className="text-xs font-bold">{cyclePool.length}</span>
-            <ArrowLeftRight className="w-3 h-3 ml-0.5" />
-          </button>
-        )}
-        {isPlaying && <div className="absolute inset-0 z-0 bg-gradient-to-t from-blue-500/10 via-transparent to-transparent opacity-50 animate-pulse pointer-events-none" />}
-        {isPlaying && <div className="absolute inset-0 z-0 bg-gradient-to-t from-blue-500/40 via-transparent to-transparent animate-pulse pointer-events-none" />}
-        {picture && (
-          <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-            <img src={picture} alt="" className={`w-full h-full object-cover blur-xl scale-150 transition-transform duration-[10s] ease-in-out ${isPlaying ? 'scale-[1.6]' : 'scale-150'}`} />
-            <div className="absolute inset-0 bg-black/20" />
-          </div>
-        )}
-        <div className="relative z-10 flex gap-4 items-start">
-          <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-lg">
-            {picture ? <img src={picture} alt="Cover" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center">{isChannel ? <Tv className="w-8 h-8 text-[var(--text-secondary)]" /> : <Speaker className="w-8 h-8 text-[var(--text-secondary)]" />}</div>}
-          </div>
-          <div className="flex flex-col overflow-hidden pt-1">
-            <div className="flex items-center gap-2 mb-1"><p className="text-xs font-bold uppercase tracking-widest text-blue-400 truncate">{name}</p></div>
-            <h3 className="text-lg font-bold leading-tight truncate mb-0.5">{title || t('common.unknown')}</h3>
-            {subtitle && <p className={`${picture ? 'text-gray-400' : 'text-[var(--text-secondary)]'} text-xs truncate font-medium`}>{subtitle}</p>}
-          </div>
-        </div>
-        <div className="relative z-10 flex items-center justify-center gap-8 mt-2">
-          <button onClick={(e) => { e.stopPropagation(); callService("media_player", "media_previous_track", { entity_id: mpId }); }} className={`${picture ? 'text-gray-400 hover:text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'} transition-colors p-2 active:scale-90`}><SkipBack className="w-6 h-6" /></button>
-          <button onClick={(e) => { e.stopPropagation(); callService("media_player", "media_play_pause", { entity_id: mpId }); }} className="w-12 h-12 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 transition-transform shadow-lg active:scale-95">{isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}</button>
-          <button onClick={(e) => { e.stopPropagation(); callService("media_player", "media_next_track", { entity_id: mpId }); }} className={`${picture ? 'text-gray-400 hover:text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'} transition-colors p-2 active:scale-90`}><SkipForward className="w-6 h-6" /></button>
-        </div>
-      </div>
-    );
-  };
-
-
+  const renderMediaGroupCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => (
+    <MediaGroupCard
+      key={cardId} cardId={cardId} dragProps={dragProps} controls={getControls(cardId)}
+      cardStyle={cardStyle} entities={entities} editMode={editMode}
+      cardSettings={cardSettings} settingsKey={settingsKey}
+      customNames={customNames} getA={getA} getEntityImageUrl={getEntityImageUrl}
+      callService={callService} isMediaActive={isMediaActive}
+      saveCardSetting={saveCardSetting} onOpen={openMediaModal} t={t}
+    />
+  );
 
 
   const renderWeatherTempCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => (
@@ -1604,14 +835,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
     if (!entity || !entityId) {
       if (editMode) {
-        return (
-          <div key={cardId} {...dragProps} className="touch-feedback relative rounded-3xl overflow-hidden bg-[var(--card-bg)] border border-dashed border-red-500/50 flex flex-col items-center justify-center p-4 h-full" style={cardStyle}>
-            {getControls(cardId)}
-            <AlertTriangle className="w-8 h-8 text-red-500 mb-2 opacity-80" />
-            <p className="text-xs font-bold text-red-500 text-center uppercase tracking-widest">{t('common.missing')}</p>
-            <p className="text-[10px] text-red-400/70 text-center mt-1 font-mono break-all line-clamp-2">{cardId}</p>
-          </div>
-        );
+        return <MissingEntityCard cardId={cardId} dragProps={dragProps} controls={getControls(cardId)} cardStyle={cardStyle} t={t} />;
       }
       return null;
     }
@@ -1690,48 +914,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     );
   };
 
-  const getCardGridSpan = (cardId) => {
-    if (cardId.startsWith('automation.')) {
-      const settingsKey = getCardSettingsKey(cardId);
-      const settings = cardSettings[settingsKey] || cardSettings[cardId] || {};
-      const typeSetting = settings.type;
-      if (typeSetting === 'sensor' || typeSetting === 'entity' || typeSetting === 'toggle') {
-        const sizeSetting = settings.size;
-        return sizeSetting === 'small' ? 1 : 2;
-      }
-      return 1;
-    }
-
-    if (cardId.startsWith('calendar_card_')) {
-      const settingsKey = getCardSettingsKey(cardId);
-      const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
-      return sizeSetting === 'small' ? 1 : (sizeSetting === 'medium' ? 2 : 4);
-    }
-
-    if (cardId.startsWith('light_') || cardId.startsWith('light.')) {
-      const settingsKey = getCardSettingsKey(cardId);
-      const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
-      return sizeSetting === 'small' ? 1 : 2;
-    }
-
-    if (cardId === 'car' || cardId.startsWith('car_card_')) {
-      const settingsKey = getCardSettingsKey(cardId);
-      const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
-      return sizeSetting === 'small' ? 1 : 2;
-    }
-
-    const settingsKey = getCardSettingsKey(cardId);
-    const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
-    if (sizeSetting === 'small') return 1;
-
-    if (cardId.startsWith('weather_temp_')) return 2;
-
-    if (activePage === 'settings' && !['car'].includes(cardId) && !cardId.startsWith('media_player')) {
-      return 1;
-    }
-
-    return 2;
-  };
+  const getCardGridSpan = (cardId) => _getCardGridSpan(cardId, getCardSettingsKey, cardSettings, activePage);
 
   const moveCardInArray = (cardId, direction) => {
     const newConfig = { ...pagesConfig };
@@ -1748,87 +931,10 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     persistConfig(newConfig);
   };
 
-  const buildGridLayout = (ids, columns) => {
-    if (!columns || columns < 1) return {};
-    const occupancy = [];
-    const positions = {};
-
-    const ensureRow = (row) => {
-      if (!occupancy[row]) occupancy[row] = Array(columns).fill(false);
-    };
-
-    const canPlace = (row, col, span) => {
-      for (let r = row; r < row + span; r += 1) {
-        ensureRow(r);
-        if (occupancy[r][col]) return false;
-      }
-      return true;
-    };
-
-    const place = (row, col, span) => {
-      for (let r = row; r < row + span; r += 1) {
-        ensureRow(r);
-        occupancy[r][col] = true;
-      }
-    };
-
-    const placeSingle = (id, span) => {
-      let placed = false;
-      let row = 0;
-      while (!placed) {
-        ensureRow(row);
-        for (let col = 0; col < columns; col += 1) {
-          if (canPlace(row, col, span)) {
-            place(row, col, span);
-            positions[id] = { row: row + 1, col: col + 1, span };
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) row += 1;
-      }
-    };
-
-    const placePair = (firstId, secondId) => {
-      let placed = false;
-      let row = 0;
-      while (!placed) {
-        ensureRow(row);
-        for (let col = 0; col < columns; col += 1) {
-          if (canPlace(row, col, 2)) {
-            place(row, col, 2);
-            positions[firstId] = { row: row + 1, col: col + 1, span: 1 };
-            positions[secondId] = { row: row + 2, col: col + 1, span: 1 };
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) row += 1;
-      }
-    };
-
-    for (let i = 0; i < ids.length; i += 1) {
-      const id = ids[i];
-      const span = getCardGridSpan(id);
-      const nextId = ids[i + 1];
-      const nextSpan = nextId ? getCardGridSpan(nextId) : null;
-
-      // if (span === 1 && nextSpan === 1) {
-      //   placePair(id, nextId);
-      //   i += 1;
-      //   continue;
-      // }
-
-      placeSingle(id, span);
-    }
-
-    return positions;
-  };
-
   const gridLayout = useMemo(() => {
     const ids = pagesConfig[activePage] || [];
     const visibleIds = editMode ? ids : ids.filter(id => !(hiddenCards.includes(id) || isCardHiddenByLogic(id)));
-    return buildGridLayout(visibleIds, gridColCount);
+    return _buildGridLayout(visibleIds, gridColCount, getCardGridSpan);
   }, [pagesConfig, activePage, gridColCount, cardSettings, hiddenCards, editMode, entities]);
 
   const dragAndDrop = createDragAndDropHandlers({
@@ -2093,14 +1199,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
     if (editMode && cardId === 'media_player') {
       // Legacy media_player placeholder for deletion
-      return (
-        <div key={cardId} {...dragProps} className="touch-feedback relative rounded-3xl overflow-hidden bg-[var(--card-bg)] border border-dashed border-red-500/50 flex flex-col items-center justify-center p-4 h-full" style={cardStyle}>
-          {getControls(cardId)}
-          <AlertTriangle className="w-8 h-8 text-red-500 mb-2 opacity-80" />
-          <p className="text-xs font-bold text-red-500 text-center uppercase tracking-widest">Legacy</p>
-          <p className="text-[10px] text-red-400/70 text-center mt-1 font-mono break-all line-clamp-2">media_player</p>
-        </div>
-      );
+      return <MissingEntityCard cardId={cardId} dragProps={dragProps} controls={getControls(cardId)} cardStyle={cardStyle} label="Legacy" t={t} />;
     }
     
     // Check for empty/missing media groups in edit mode
@@ -2108,14 +1207,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     if (editMode && cardId.startsWith('media_group_')) {
        // Since it reached here, renderMediaGroupCard returned null (likely because activeEntities=0)
        // We force a "Broken" state card so user can delete it
-       return (
-        <div key={cardId} {...dragProps} className="touch-feedback relative rounded-3xl overflow-hidden bg-[var(--card-bg)] border border-dashed border-red-500/50 flex flex-col items-center justify-center p-4 h-full" style={cardStyle}>
-          {getControls(cardId)}
-          <AlertTriangle className="w-8 h-8 text-red-500 mb-2 opacity-80" />
-          <p className="text-xs font-bold text-red-500 text-center uppercase tracking-widest">{t('common.missing')}</p>
-          <p className="text-[10px] text-red-400/70 text-center mt-1 font-mono break-all line-clamp-2">{cardId}</p>
-        </div>
-      );
+       return <MissingEntityCard cardId={cardId} dragProps={dragProps} controls={getControls(cardId)} cardStyle={cardStyle} t={t} />;
     }
 
     switch(cardId) {
@@ -2192,215 +1284,6 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           isMobile ? 'px-5 mobile-grid' : (gridColCount === 1 ? 'px-10 sm:px-16 md:px-24' : 'px-6 md:px-20')
         } ${isCompactCards ? 'compact-cards' : ''}`}
       >
-        <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes popupIn {
-            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-          }
-          @keyframes editControlsIn {
-            from { opacity: 0; transform: scale(0.9) translateY(-5px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-          }
-          .edit-controls-anim {
-            animation: editControlsIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-          .edit-mode-card {
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          }
-          @keyframes editJiggle {
-            0% { transform: rotate(-0.15deg) scale(0.99); }
-            50% { transform: rotate(0.15deg) scale(0.99); }
-            100% { transform: rotate(-0.15deg) scale(0.99); }
-          }
-          .popup-anim {
-            animation: popupIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-          .fade-in-anim {
-            animation: fadeIn 0.4s ease-out forwards;
-          }
-          .card-animate {
-            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-          }
-          .card-unavailable {
-            position: relative;
-            overflow: hidden;
-          }
-          .card-unavailable::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 59, 48, 0.03), transparent);
-            animation: shimmer 2s infinite;
-          }
-          @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-          }
-          .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-          }
-          .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-          .vacuum-card-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: center;
-          }
-          .card-controls--temp {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: center;
-          }
-          .card-controls--temp .control-plus {
-            order: 0;
-          }
-          .card-controls--temp .control-minus {
-            order: 1;
-          }
-          .sensor-card-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: center;
-          }
-          .sensor-card-controls .control-on {
-            order: 0;
-          }
-          .sensor-card-controls .control-off {
-            order: 1;
-          }
-          @container (min-width: 248px) {
-            .vacuum-card-controls {
-              flex-direction: row;
-            }
-            .card-controls--temp {
-              flex-direction: row;
-            }
-            .card-controls--temp .control-plus {
-              order: 1;
-            }
-            .card-controls--temp .control-minus {
-              order: 0;
-            }
-            .sensor-card-controls {
-              flex-direction: row;
-            }
-            .sensor-card-controls .control-on {
-              order: 1;
-            }
-            .sensor-card-controls .control-off {
-              order: 0;
-            }
-          }
-          .popup-surface {
-            background: var(--modal-surface, var(--glass-bg));
-            border: none;
-            box-shadow: var(--modal-surface-shadow, 0 10px 24px rgba(0, 0, 0, 0.25));
-            backdrop-filter: blur(16px);
-          }
-          .popup-surface-hover:hover {
-            background: var(--modal-surface-hover, var(--glass-bg-hover));
-            border: none;
-            box-shadow: var(--modal-surface-shadow-hover, 0 14px 28px rgba(0, 0, 0, 0.3));
-          }
-          .popup-surface-divider {
-            background: color-mix(in srgb, var(--glass-border) 35%, transparent);
-          }
-          .popup-anim {
-            border-color: var(--modal-border, var(--glass-border));
-            box-shadow: var(--modal-shadow, 0 20px 40px rgba(0, 0, 0, 0.35));
-            border-width: var(--modal-border-width, 0px);
-          }
-          .compact-cards .card-compact {
-            transform: scale(0.92);
-            transform-origin: top center;
-          }
-          .compact-cards .card-compact > * {
-            width: 100%;
-          }
-          .mobile-grid .card-compact {
-            transform: scale(0.82);
-            transform-origin: top center;
-            width: 122%;
-            height: 122%;
-            margin-left: -11%;
-          }
-          .mobile-grid .card-compact > * {
-            width: 100%;
-          }
-          .modal-close {
-            width: 36px;
-            height: 36px;
-            border-radius: 9999px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: color-mix(in srgb, var(--glass-bg) 85%, transparent);
-            color: var(--text-secondary);
-            border: none;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            transition: transform 150ms ease, background 150ms ease, color 150ms ease;
-          }
-          .modal-close:hover {
-            background: color-mix(in srgb, var(--glass-bg-hover) 90%, transparent);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-          }
-          .modal-close:active {
-            transform: scale(0.96);
-          }
-          .modal-close-dark {
-            background: rgba(0, 0, 0, 0.55);
-            color: #ffffff;
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-          }
-          .modal-close-dark:hover {
-            background: rgba(0, 0, 0, 0.7);
-          }
-          .touch-feedback {
-            transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
-            -webkit-tap-highlight-color: transparent;
-          }
-          .touch-feedback:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            border-color: rgba(255, 255, 255, 0.15) !important;
-            z-index: 10;
-          }
-          .touch-feedback:active {
-            transform: scale(0.98);
-            filter: brightness(1.05);
-          }
-          ::selection {
-            background: var(--selection-bg, rgba(59, 130, 246, 0.3));
-            color: var(--selection-text, #fff);
-          }
-          html[data-theme='flat'] * {
-            box-shadow: none !important;
-            border-color: transparent !important;
-          }
-          html[data-theme='flat'] .modal-close,
-          html[data-theme='flat'] .modal-close-dark,
-          html[data-theme='flat'] .popup-surface,
-          html[data-theme='flat'] .popup-surface-hover {
-            box-shadow: none !important;
-          }
-        `}</style>
         <Header
           now={now}
           headerTitle={resolvedHeaderTitle}
@@ -2452,7 +1335,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           <div className="mb-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-100 px-4 sm:px-6 py-4 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-300" />
             <div className="text-sm font-semibold">
-              Home Assistant er utilgjengeleg akkurat no. Data kan vere utdaterte, men korta blir viste.
+              {t('ha.unavailable')}
             </div>
           </div>
         )}
@@ -2597,7 +1480,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
         )}
         
         {(showConfigModal || showOnboarding) && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <ConfigModal
               open={showConfigModal || showOnboarding}
           isOnboardingActive={isOnboardingActive}
@@ -2648,74 +1531,29 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               onClose={() => setShowConfigModal(false)}
               onFinishOnboarding={() => { setShowOnboarding(false); setShowConfigModal(false); }}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showNordpoolModal && (() => {
-          const settingsKey = getCardSettingsKey(showNordpoolModal);
-          const settings = cardSettings[settingsKey] || cardSettings[showNordpoolModal] || {};
-          const entity = entities[settings.nordpoolId];
-          if (!entity) return null;
-          
-          const todayPrices = Array.isArray(entity.attributes?.today) ? entity.attributes.today : [];
-          const tomorrowPrices = Array.isArray(entity.attributes?.tomorrow) ? entity.attributes.tomorrow : [];
-          const tomorrowValid = entity.attributes?.tomorrow_valid === true;
-          
-          const allPrices = [...todayPrices, ...(tomorrowValid && Array.isArray(tomorrowPrices) ? tomorrowPrices : [])];
-          
-          // Get current hour
-          const now = new Date();
-          const currentHour = now.getHours();
-          
-          // Nordpool array offset
-          const currentPriceIndex = currentHour + 47;
-          
-          const fullPriceDataNordpool = allPrices.map((price, idx) => {
-            const actualHour = (idx - currentPriceIndex + currentHour) % 24;
-            const dayOffset = Math.floor((idx - currentPriceIndex + currentHour) / 24);
-            
-            const startTime = new Date();
-            startTime.setDate(startTime.getDate() + dayOffset);
-            startTime.setHours(actualHour, 0, 0, 0);
-            
-            const endTime = new Date(startTime);
-            endTime.setHours(endTime.getHours() + 1);
-            
-            return {
-              start: startTime.toISOString(),
-              end: endTime.toISOString(),
-              value: price
-            };
-          });
-          
-          const numericalPrices = allPrices.filter(p => typeof p === 'number' && !Number.isNaN(p));
-          const priceStatsNordpool = numericalPrices.length > 0
-            ? {
-                min: Math.min(...numericalPrices),
-                max: Math.max(...numericalPrices),
-                avg: numericalPrices.reduce((a, b) => a + b, 0) / numericalPrices.length
-              }
-            : { min: 0, max: 0, avg: 0 };
-          
-          const name = customNames?.[showNordpoolModal] || entity.attributes?.friendly_name || showNordpoolModal;
-          
+          const data = prepareNordpoolData(showNordpoolModal, { getCardSettingsKey, cardSettings, entities, customNames });
+          if (!data) return null;
           return (
-            <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+            <ModalSuspense>
               <NordpoolModal
                 show={true}
-              onClose={() => setShowNordpoolModal(null)}
-              entity={entity}
-              fullPriceData={fullPriceDataNordpool}
-              currentPriceIndex={currentPriceIndex}
-              priceStats={priceStatsNordpool}
-              name={name}
-              t={t}
-              language={language}
-              saveCardSetting={saveCardSetting}
+                onClose={() => setShowNordpoolModal(null)}
+                entity={data.entity}
+                fullPriceData={data.fullPriceData}
+                currentPriceIndex={data.currentPriceIndex}
+                priceStats={data.priceStats}
+                name={data.name}
+                t={t}
+                language={language}
+                saveCardSetting={saveCardSetting}
                 cardId={showNordpoolModal}
-                settings={settings}
+                settings={data.settings}
               />
-            </Suspense>
+            </ModalSuspense>
           );
         })()}
 
@@ -2726,7 +1564,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           const iconName = customIcons?.[showCostModal] || null;
 
           return (
-            <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+            <ModalSuspense>
               <CostModal
                 show={true}
                 onClose={() => setShowCostModal(null)}
@@ -2738,12 +1576,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
                 iconName={iconName}
                 t={t}
               />
-            </Suspense>
+            </ModalSuspense>
           );
         })()}
 
         {activeClimateEntityModal && entities[activeClimateEntityModal] && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <GenericClimateModal
               entityId={activeClimateEntityModal}
               entity={entities[activeClimateEntityModal]}
@@ -2754,11 +1592,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               swingMap={swingMap}
               t={t}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showLightModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <LightModal
               show={!!showLightModal}
               onClose={() => setShowLightModal(null)}
@@ -2771,13 +1609,13 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               customIcons={customIcons}
               t={t}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showAndroidTVModal && (() => {
           const settings = cardSettings[getCardSettingsKey(showAndroidTVModal)] || {};
           return (
-            <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+            <ModalSuspense>
               <GenericAndroidTVModal
                 show={true}
               onClose={() => setShowAndroidTVModal(null)}
@@ -2791,12 +1629,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               customNames={customNames}
               t={t}
               />
-            </Suspense>
+            </ModalSuspense>
           );
         })()}
 
         {showVacuumModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <VacuumModal
           show={showVacuumModal}
           onClose={() => { setShowVacuumModal(false); setActiveVacuumId(null); }}
@@ -2806,7 +1644,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           t={t}
           vacuumId={activeVacuumId}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {activeCarModal && (() => {
@@ -2814,7 +1652,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           const settings = resolveCarSettings(activeCarModal, cardSettings[settingsKey] || cardSettings[activeCarModal] || {});
           const name = customNames[activeCarModal] || t('car.defaultName');
           return (
-            <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+            <ModalSuspense>
               <LeafModal
                 show={true}
               onClose={() => setActiveCarModal(null)}
@@ -2825,526 +1663,51 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               t={t}
               car={{ name, ...settings }}
               />
-            </Suspense>
+            </ModalSuspense>
           );
         })()}
 
         {showAddCardModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-6 pt-12 md:pt-16" style={{backdropFilter: 'blur(20px)', backgroundColor: 'rgba(0,0,0,0.3)'}} onClick={() => setShowAddCardModal(false)}>
-            <style>{`
-              .custom-scrollbar::-webkit-scrollbar {
-                width: 4px;
-              }
-              .custom-scrollbar::-webkit-scrollbar-track {
-                background: rgba(255, 255, 255, 0.02);
-              }
-              .custom-scrollbar::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.15);
-                border-radius: 10px;
-              }
-              .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                background: rgba(255, 255, 255, 0.25);
-              }
-            `}</style>
-            <div className="border w-full max-w-xl lg:max-w-4xl max-h-[85vh] rounded-3xl md:rounded-[2.5rem] p-5 md:p-8 shadow-2xl relative font-sans flex flex-col backdrop-blur-xl popup-anim" style={{background: 'linear-gradient(135deg, var(--card-bg) 0%, var(--modal-bg) 100%)', borderColor: 'var(--glass-border)', color: 'var(--text-primary)'}} onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setShowAddCardModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 modal-close"><X className="w-4 h-4" /></button>
-              <h3 className="text-xl font-light mb-5 text-[var(--text-primary)] text-center uppercase tracking-widest italic">{t('modal.addCard.title')}</h3>
-              
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              {(addCardTargetPage !== 'header') && (
-                <div className="mb-4 relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input type="text" placeholder={t('addCard.search')} className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-2xl pl-11 pr-4 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-blue-500/50 transition-colors" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                </div>
-              )}
-              
-              {(addCardTargetPage !== 'header' && addCardTargetPage !== 'settings') && (
-                <div className="mb-5">
-                  <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-2">{t('addCard.cardType')}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setAddCardType('sensor')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'sensor' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Activity className="w-4 h-4" /> Sensor
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('light')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'light' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Lightbulb className="w-4 h-4" /> {t('addCard.type.light')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('vacuum')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'vacuum' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Bot className="w-4 h-4" /> {t('addCard.type.vacuum')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('climate')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'climate' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Thermometer className="w-4 h-4" /> {t('addCard.type.climate')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('car')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'car' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Car className="w-4 h-4" /> {t('addCard.type.car')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('androidtv')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'androidtv' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Gamepad2 className="w-4 h-4" /> Android TV
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('cost')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'cost' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Coins className="w-4 h-4" /> {t('addCard.type.cost')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('media')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'media' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Music className="w-4 h-4" /> {t('addCard.type.media')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('weather')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'weather' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <CloudSun className="w-4 h-4" /> {t('addCard.type.weather')}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('calendar')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'calendar' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Calendar className="w-4 h-4" /> {t('addCard.type.calendar') || 'Calendar'}
-                    </button>
-                    <button
-                      onClick={() => setAddCardType('nordpool')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === 'nordpool' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      <Zap className="w-4 h-4" /> Nordpool
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-6">
-                {addCardType === 'weather' ? (
-                  <div className="space-y-8">
-                    <div>
-                        <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">{t('addCard.weatherRequired')}</p>
-                      <div className="space-y-3">
-                        {Object.keys(entities)
-                          .filter(id => id.startsWith('weather.'))
-                          .filter(id => {
-                            if (!searchTerm) return true;
-                            const lowerTerm = searchTerm.toLowerCase();
-                            const name = entities[id].attributes?.friendly_name || id;
-                            return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
-                          })
-                          .sort((a, b) => (entities[a].attributes?.friendly_name || a).localeCompare(entities[b].attributes?.friendly_name || b))
-                          .map(id => {
-                            const isSelected = selectedWeatherId === id;
-                            return (
-                              <button type="button" key={id} onClick={() => setSelectedWeatherId(prev => prev === id ? null : id)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                                <div className="flex flex-col overflow-hidden mr-4">
-                                  <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
-                                  <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                                  {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        {Object.keys(entities).filter(id => id.startsWith('weather.')).length === 0 && (
-                          <p className="text-gray-500 italic text-sm text-center py-4">{t('addCard.noWeatherSensors')}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">Temperatursensor (valfri)</p>
-                      <div className="space-y-3">
-                        <button type="button" onClick={() => setSelectedTempId(null)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${!selectedTempId ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                          <div className="flex flex-col overflow-hidden mr-4">
-                            <span className={`text-sm font-bold transition-colors truncate ${!selectedTempId ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{t('addCard.useWeatherTemp')}</span>
-                            <span className={`text-[11px] font-medium truncate ${!selectedTempId ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>weather.temperature</span>
-                          </div>
-                          <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${!selectedTempId ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                            {!selectedTempId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                          </div>
-                        </button>
-                        {Object.keys(entities)
-                          .filter(id => {
-                            if (!id.startsWith('sensor.')) return false;
-                            const deviceClass = entities[id].attributes?.device_class;
-                            const lowerId = id.toLowerCase();
-                            return deviceClass === 'temperature' || lowerId.includes('temperature') || lowerId.includes('temp');
-                          })
-                          .filter(id => {
-                            if (!searchTerm) return true;
-                            const lowerTerm = searchTerm.toLowerCase();
-                            const name = entities[id].attributes?.friendly_name || id;
-                            return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
-                          })
-                          .sort((a, b) => (entities[a].attributes?.friendly_name || a).localeCompare(entities[b].attributes?.friendly_name || b))
-                          .map(id => {
-                            const isSelected = selectedTempId === id;
-                            return (
-                              <button type="button" key={id} onClick={() => setSelectedTempId(prev => prev === id ? null : id)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                                <div className="flex flex-col overflow-hidden mr-4">
-                                  <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
-                                  <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                                  {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        {Object.keys(entities).filter(id => {
-                          if (!id.startsWith('sensor.')) return false;
-                          const deviceClass = entities[id].attributes?.device_class;
-                          const lowerId = id.toLowerCase();
-                          return deviceClass === 'temperature' || lowerId.includes('temperature') || lowerId.includes('temp');
-                        }).length === 0 && (
-                          <p className="text-gray-500 italic text-sm text-center py-4">{t('addCard.noTempSensors')}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : addCardType === 'androidtv' ? (
-                  <div className="space-y-8">
-                    <div>
-                      <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">Media Player (påkrevd)</p>
-                      <div className="space-y-3">
-                        {Object.keys(entities)
-                          .filter(id => id.startsWith('media_player.'))
-                          .filter(id => {
-                            if (!searchTerm) return true;
-                            const lowerTerm = searchTerm.toLowerCase();
-                            const name = entities[id].attributes?.friendly_name || id;
-                            return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
-                          })
-                          .sort((a, b) => (entities[a].attributes?.friendly_name || a).localeCompare(entities[b].attributes?.friendly_name || b))
-                          .map(id => {
-                            const isSelected = selectedAndroidTVMediaId === id;
-                            return (
-                              <button type="button" key={id} onClick={() => setSelectedAndroidTVMediaId(prev => prev === id ? null : id)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                                <div className="flex flex-col overflow-hidden mr-4">
-                                  <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
-                                  <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                                  {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        {Object.keys(entities).filter(id => id.startsWith('media_player.')).length === 0 && (
-                          <p className="text-gray-500 italic text-sm text-center py-4">{t('addCard.noMediaPlayers')}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">Fjernkontroll (valfri)</p>
-                      <div className="space-y-3">
-                        <button type="button" onClick={() => setSelectedAndroidTVRemoteId(null)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${!selectedAndroidTVRemoteId ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                          <div className="flex flex-col overflow-hidden mr-4">
-                            <span className={`text-sm font-bold transition-colors truncate ${!selectedAndroidTVRemoteId ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>Ingen fjernkontroll</span>
-                            <span className={`text-[11px] font-medium truncate ${!selectedAndroidTVRemoteId ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>(berre media kontroll)</span>
-                          </div>
-                          <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${!selectedAndroidTVRemoteId ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                            {!selectedAndroidTVRemoteId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                          </div>
-                        </button>
-                        {Object.keys(entities)
-                          .filter(id => id.startsWith('remote.'))
-                          .filter(id => {
-                            if (!searchTerm) return true;
-                            const lowerTerm = searchTerm.toLowerCase();
-                            const name = entities[id].attributes?.friendly_name || id;
-                            return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
-                          })
-                          .sort((a, b) => (entities[a].attributes?.friendly_name || a).localeCompare(entities[b].attributes?.friendly_name || b))
-                          .map(id => {
-                            const isSelected = selectedAndroidTVRemoteId === id;
-                            return (
-                              <button type="button" key={id} onClick={() => setSelectedAndroidTVRemoteId(prev => prev === id ? null : id)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                                <div className="flex flex-col overflow-hidden mr-4">
-                                  <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
-                                  <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                                  {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                      </div>
-                    </div>
-                    <div className="mt-8 pt-6 border-t border-gray-700">
-                      <button 
-                        onClick={() => handleAddSelected()}
-                        disabled={!selectedAndroidTVMediaId}
-                        className="w-full px-6 py-3 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {t('addCard.add')}
-                      </button>
-                    </div>
-                  </div>
-                ) : addCardType === 'calendar' ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-                    <div className="p-4 rounded-full bg-blue-500/10 text-blue-400">
-                      <Calendar className="w-8 h-8" />
-                    </div>
-                    <p className="text-gray-400 max-w-xs text-sm">{t('addCard.calendarDescription') || 'Add a calendar card. You can select calendars after adding the card.'}</p>
-                    <button 
-                      onClick={() => handleAddSelected()}
-                      className="px-6 py-3 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
-                    >
-                      {t('addCard.add')}
-                    </button>
-                  </div>
-                ) : addCardType === 'car' ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-                    <div className="p-4 rounded-full bg-blue-500/10 text-blue-400">
-                      <Car className="w-8 h-8" />
-                    </div>
-                    <p className="text-gray-400 max-w-xs text-sm">{t('addCard.carDescription')}</p>
-                    <button 
-                      onClick={() => handleAddSelected()}
-                      className="px-6 py-3 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
-                    >
-                      {t('addCard.carCard')}
-                    </button>
-                  </div>
-                ) : addCardType === 'nordpool' ? (
-                  <div className="space-y-8">
-                    <div>
-                      <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">Nordpool Sensor (påkrevd)</p>
-                      <div className="space-y-3">
-                        {Object.keys(entities)
-                          .filter(id => id.startsWith('sensor.') && id.toLowerCase().includes('nordpool'))
-                          .filter(id => {
-                            if (!searchTerm) return true;
-                            const lowerTerm = searchTerm.toLowerCase();
-                            const name = entities[id].attributes?.friendly_name || id;
-                            return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
-                          })
-                          .sort((a, b) => (entities[a].attributes?.friendly_name || a).localeCompare(entities[b].attributes?.friendly_name || b))
-                          .map(id => {
-                            const isSelected = selectedNordpoolId === id;
-                            return (
-                              <button type="button" key={id} onClick={() => setSelectedNordpoolId(prev => prev === id ? null : id)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                                <div className="flex flex-col overflow-hidden mr-4">
-                                  <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
-                                  <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                                  {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        {Object.keys(entities).filter(id => id.startsWith('sensor.') && id.toLowerCase().includes('nordpool')).length === 0 && (
-                          <p className="text-gray-500 italic text-sm text-center py-4">Ingen Nordpool sensorar funne</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-2">Desimalar</p>
-                      <div className="flex gap-2 px-4">
-                        {[0, 1, 2, 3].map(dec => (
-                          <button
-                            key={dec}
-                            onClick={() => setNordpoolDecimals(dec)}
-                            className={`px-4 py-2 rounded-lg transition-all font-bold ${nordpoolDecimals === dec ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
-                          >
-                            {dec}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    {addCardType === 'cost' && (
-                      <div className="mb-5">
-                        <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-2">{t('addCard.costPickTarget')}</p>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => setCostSelectionTarget('today')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${costSelectionTarget === 'today' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                          >
-                            <Coins className="w-4 h-4" /> {t('addCard.costToday')}
-                          </button>
-                          <button
-                            onClick={() => setCostSelectionTarget('month')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${costSelectionTarget === 'month' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                          >
-                            <Coins className="w-4 h-4" /> {t('addCard.costMonth')}
-                          </button>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                          <span className={`px-3 py-1 rounded-full border ${selectedCostTodayId ? 'border-emerald-500/30 text-emerald-400' : 'border-[var(--glass-border)] text-[var(--text-muted)]'}`}>
-                            {t('addCard.costToday')}: {selectedCostTodayId ? (entities[selectedCostTodayId]?.attributes?.friendly_name || selectedCostTodayId) : t('common.missing')}
-                          </span>
-                          <span className={`px-3 py-1 rounded-full border ${selectedCostMonthId ? 'border-emerald-500/30 text-emerald-400' : 'border-[var(--glass-border)] text-[var(--text-muted)]'}`}>
-                            {t('addCard.costMonth')}: {selectedCostMonthId ? (entities[selectedCostMonthId]?.attributes?.friendly_name || selectedCostMonthId) : t('common.missing')}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">{getAddCardAvailableLabel()}</p>
-                    <div className="space-y-3">
-                      {Object.keys(entities)
-                        .filter(id => {
-                          if (addCardTargetPage === 'header') return id.startsWith('person.') && !(pagesConfig.header || []).includes(id);
-                          if (addCardTargetPage === 'settings') {
-                             const isNotAdded = !(pagesConfig.settings || []).includes(id);
-                             if (!isNotAdded) return false;
-                             return true;
-                          }
-                          if (addCardType === 'vacuum') {
-                            return id.startsWith('vacuum.') && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          }
-                          if (addCardType === 'climate') {
-                            return id.startsWith('climate.');
-                          }
-                          if (addCardType === 'androidtv') {
-                            return id.startsWith('media_player.') || id.startsWith('remote.');
-                          }
-                          if (addCardType === 'cost') {
-                            return (id.startsWith('sensor.') || id.startsWith('input_number.'));
-                          }
-                          if (addCardType === 'media') {
-                            return id.startsWith('media_player.');
-                          }
-                          if (addCardType === 'sensor') {
-                              return (id.startsWith('sensor.') || id.startsWith('script.') || id.startsWith('scene.') || id.startsWith('input_number.') || id.startsWith('input_boolean.') || id.startsWith('binary_sensor.') || id.startsWith('switch.') || id.startsWith('automation.')) && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          }
-                          if (addCardType === 'toggle') {
-                            return isToggleEntity(id) && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          }
-                          if (addCardType === 'entity') {
-                            return !id.startsWith('person.') && !id.startsWith('update.') && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          }
-                          return id.startsWith('light.') && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                        })
-                        .filter(id => {
-                          if (!searchTerm) return true;
-                          const lowerTerm = searchTerm.toLowerCase();
-                          const name = entities[id].attributes?.friendly_name || id;
-                          return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
-                        })
-                        .sort((a, b) => (entities[a].attributes?.friendly_name || a).localeCompare(entities[b].attributes?.friendly_name || b))
-                        .slice(0, addCardTargetPage === 'settings' ? 100 : undefined) // Limit settings list for performance
-                        .map(id => {
-                          const isSelected = addCardType === 'cost'
-                            ? (selectedCostTodayId === id || selectedCostMonthId === id)
-                            : selectedEntities.includes(id);
-                          const isSelectedToday = selectedCostTodayId === id;
-                          const isSelectedMonth = selectedCostMonthId === id;
-                          return (
-                          <button type="button" key={id} onClick={() => {
-                              if (addCardType === 'cost') {
-                                if (costSelectionTarget === 'today') {
-                                  setSelectedCostTodayId(prev => (prev === id ? null : id));
-                                } else {
-                                  setSelectedCostMonthId(prev => (prev === id ? null : id));
-                                }
-                                return;
-                              }
-                              if (selectedEntities.includes(id)) setSelectedEntities(prev => prev.filter(e => e !== id));
-                              else setSelectedEntities(prev => [...prev, id]);
-                          }} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
-                            <div className="flex flex-col overflow-hidden mr-4">
-                              <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
-                              <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
-                            </div>
-                            {addCardType === 'cost' ? (
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {isSelectedToday && (
-                                  <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest bg-emerald-500/20 text-emerald-400">{t('addCard.costToday')}</span>
-                                )}
-                                {isSelectedMonth && (
-                                  <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest bg-emerald-500/20 text-emerald-400">{t('addCard.costMonth')}</span>
-                                )}
-                                {!isSelected && (
-                                  <div className="p-2 rounded-full transition-colors bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400">
-                                    <Plus className="w-4 h-4" />
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
-                                {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                              </div>
-                            )}
-                          </button>
-                        );})}
-                        {Object.keys(entities).filter(id => {
-                          if (addCardTargetPage === 'header') return id.startsWith('person.') && !(pagesConfig.header || []).includes(id);
-                          if (addCardTargetPage === 'settings') return !(pagesConfig.settings || []).includes(id);
-                          if (addCardType === 'vacuum') return id.startsWith('vacuum.') && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          if (addCardType === 'climate') return id.startsWith('climate.');
-                          if (addCardType === 'androidtv') return id.startsWith('media_player.') || id.startsWith('remote.');
-                          if (addCardType === 'cost') return (id.startsWith('sensor.') || id.startsWith('input_number.'));
-                          if (addCardType === 'media') return id.startsWith('media_player.');
-                          if (addCardType === 'sensor') {
-                            return (id.startsWith('sensor.') || id.startsWith('script.') || id.startsWith('scene.') || id.startsWith('input_number.') || id.startsWith('input_boolean.') || id.startsWith('binary_sensor.') || id.startsWith('switch.') || id.startsWith('automation.')) && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          }
-                          if (addCardType === 'toggle') return isToggleEntity(id) && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          if (addCardType === 'entity') return !id.startsWith('person.') && !id.startsWith('update.') && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                          return id.startsWith('light.') && !(pagesConfig[addCardTargetPage] || []).includes(id);
-                        }).length === 0 && (
-                          <p className="text-gray-500 italic text-sm text-center py-4">{getAddCardNoneLeftLabel()}</p>
-                        )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              </div>
-
-              <div className="pt-6 mt-6 border-t border-[var(--glass-border)] flex flex-col gap-3">
-                {addCardType !== 'weather' && addCardType !== 'cost' && selectedEntities.length > 0 && (
-                  <button onClick={handleAddSelected} className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
-                    <Plus className="w-5 h-5" /> {addCardType === 'media' ? `${t('addCard.add')} ${selectedEntities.length} ${t('addCard.players')}` : `${t('addCard.add')} ${selectedEntities.length} ${t('addCard.cards')}`}
-                  </button>
-                )}
-                {addCardType === 'cost' && selectedCostTodayId && selectedCostMonthId && (
-                  <button onClick={handleAddSelected} className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
-                    <Plus className="w-5 h-5" /> {t('addCard.costCard')}
-                  </button>
-                )}
-                {addCardType === 'weather' && selectedWeatherId && (
-                  <button onClick={handleAddSelected} className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
-                    <Plus className="w-5 h-5" /> {t('addCard.weatherCard')}
-                  </button>
-                )}
-                {addCardType === 'nordpool' && selectedNordpoolId && (
-                  <button onClick={handleAddSelected} className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
-                    <Plus className="w-5 h-5" /> Nordpool kort
-                  </button>
-                )}
-                <button onClick={() => setShowAddCardModal(false)} className="w-full py-3 rounded-2xl popup-surface popup-surface-hover text-[var(--text-secondary)] font-bold uppercase tracking-widest transition-colors">OK</button>
-              </div>
-            </div>
-          </div>
-          </Suspense>
+          <ModalSuspense>
+            <AddCardContent
+              onClose={() => setShowAddCardModal(false)}
+              addCardTargetPage={addCardTargetPage}
+              addCardType={addCardType}
+              setAddCardType={setAddCardType}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              entities={entities}
+              pagesConfig={pagesConfig}
+              selectedEntities={selectedEntities}
+              setSelectedEntities={setSelectedEntities}
+              selectedWeatherId={selectedWeatherId}
+              setSelectedWeatherId={setSelectedWeatherId}
+              selectedTempId={selectedTempId}
+              setSelectedTempId={setSelectedTempId}
+              selectedAndroidTVMediaId={selectedAndroidTVMediaId}
+              setSelectedAndroidTVMediaId={setSelectedAndroidTVMediaId}
+              selectedAndroidTVRemoteId={selectedAndroidTVRemoteId}
+              setSelectedAndroidTVRemoteId={setSelectedAndroidTVRemoteId}
+              selectedCostTodayId={selectedCostTodayId}
+              setSelectedCostTodayId={setSelectedCostTodayId}
+              selectedCostMonthId={selectedCostMonthId}
+              setSelectedCostMonthId={setSelectedCostMonthId}
+              costSelectionTarget={costSelectionTarget}
+              setCostSelectionTarget={setCostSelectionTarget}
+              selectedNordpoolId={selectedNordpoolId}
+              setSelectedNordpoolId={setSelectedNordpoolId}
+              nordpoolDecimals={nordpoolDecimals}
+              setNordpoolDecimals={setNordpoolDecimals}
+              onAddSelected={onAddSelected}
+              getAddCardAvailableLabel={getAddCardAvailableLabel}
+              getAddCardNoneLeftLabel={getAddCardNoneLeftLabel}
+              t={t}
+            />
+          </ModalSuspense>
         )}
 
         {editingPage && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <EditPageModal 
           isOpen={!!editingPage}
           onClose={() => setEditingPage(null)}
@@ -3355,11 +1718,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           pageDefaults={pageDefaults}
           onDelete={deletePage}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showAddPageModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <AddPageModal 
           isOpen={showAddPageModal} 
           onClose={() => setShowAddPageModal(false)} 
@@ -3371,11 +1734,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           onCreate={createPage}
           onCreateMedia={createMediaPage}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showEditCardModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <EditCardModal 
           isOpen={!!showEditCardModal}
           onClose={() => { setShowEditCardModal(null); setEditCardSettingsKey(null); }}
@@ -3402,11 +1765,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           hiddenCards={hiddenCards}
           toggleCardVisibility={toggleCardVisibility}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showSensorInfoModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <SensorModal 
           isOpen={!!showSensorInfoModal}
           onClose={() => setShowSensorInfoModal(null)}
@@ -3418,11 +1781,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           haToken={config.token}
           t={t}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showHeaderEditModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <EditHeaderModal
           show={showHeaderEditModal}
           onClose={() => setShowHeaderEditModal(false)}
@@ -3434,11 +1797,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           updateHeaderSettings={updateHeaderSettings}
           t={t}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {activeMediaModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <MediaModal
           show={!!activeMediaModal}
           onClose={() => {
@@ -3466,11 +1829,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           formatDuration={formatDuration}
           getServerInfo={getServerInfo}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showStatusPillsConfig && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <StatusPillsConfigModal
           show={showStatusPillsConfig}
           onClose={() => setShowStatusPillsConfig(false)}
@@ -3479,11 +1842,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           entities={entities}
           t={t}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showCalendarModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <CalendarModal
           show={showCalendarModal}
           onClose={() => setShowCalendarModal(false)}
@@ -3491,7 +1854,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           entities={entities}
           t={t}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
 
         {showWeatherModal && (() => {
@@ -3502,7 +1865,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           if (!weatherEntity) return null;
 
           return (
-            <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+            <ModalSuspense>
               <WeatherModal
                 show={true}
                 onClose={() => setShowWeatherModal(null)}
@@ -3511,12 +1874,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
                 tempEntity={tempEntity}
                 t={t}
               />
-            </Suspense>
+            </ModalSuspense>
           );
         })()}
 
         {showPersonModal && (
-          <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="text-white">Loading...</div></div>}>
+          <ModalSuspense>
             <PersonModal
           show={!!showPersonModal}
           onClose={() => setShowPersonModal(null)}
@@ -3529,7 +1892,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           t={t}
           settings={showPersonModal ? (cardSettings[getCardSettingsKey(showPersonModal, 'header')] || cardSettings[showPersonModal] || {}) : {}}
             />
-          </Suspense>
+          </ModalSuspense>
         )}
       </div>
     </div>

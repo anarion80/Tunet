@@ -43,12 +43,12 @@ export default function NordpoolModal({
     setShowWithSupport(settings?.showWithSupport ?? false);
   }, [settings?.showWithSupport]);
   
-  // Norsk strømstøtte 2025/2026:
-  // Terskel: 75 øre/kWh (eks. mva) = 93.75 øre/kWh (inkl. mva)
-  // Støtte: (pris eks. mva - 75) × 0.90 × 1.25
-  // Input-prisar er inkludert mva
+  // Norwegian electricity price support 2025/2026:
+  // Threshold: 75 øre/kWh (excl. VAT) = 93.75 øre/kWh (incl. VAT)
+  // Subsidy: (price excl. VAT - 75) × 0.90 × 1.25
+  // Input prices include VAT
   const applyElStøtte = (priceInclMva) => {
-    const threshold = 93.75; // 75 øre eks. mva × 1.25
+    const threshold = 93.75; // 75 øre excl. VAT × 1.25
     if (priceInclMva <= threshold) {
       return priceInclMva;
     }

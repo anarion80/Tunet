@@ -23,12 +23,12 @@ const createBezierPath = (points, smoothing = 0.35) => {
   }, '');
 };
 
-// Hjelpefunksjon for å lage mjuke kurver (Catmull-Rom til Bezier)
+// Helper function to create smooth curves (Catmull-Rom to Bezier)
 const getSvgPath = (points, smoothing = 0.35) => {
   return createBezierPath(points, smoothing);
 };
 
-// Funksjon for å glatte ut data (Moving Average)
+// Smooth data using Moving Average
 const smoothData = (data, windowSize = 3) => {
   if (data.length < windowSize) return data;
   return data.map((point, index, array) => {
@@ -49,7 +49,7 @@ export default function WeatherGraph({ history, currentTemp }) {
 
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
-    // Behandle historikk
+    // Process history
     let points = history
         .map(d => ({
           time: new Date(d.last_updated),
@@ -58,10 +58,10 @@ export default function WeatherGraph({ history, currentTemp }) {
         .filter(p => !isNaN(p.temp) && p.time >= twelveHoursAgo)
         .sort((a, b) => a.time - b.time);
 
-    // Legg til nåtidspunkt
+    // Add current time point
     if (currentTemp !== undefined && !isNaN(currentTemp)) {
         const now = new Date();
-        // Legg berre til om det er nyare enn siste punkt
+        // Only add if newer than the last point
         if (points.length === 0 || points[points.length - 1].time < now) {
             points.push({
                 time: now,
@@ -70,22 +70,22 @@ export default function WeatherGraph({ history, currentTemp }) {
         }
     }
 
-    // Downsample: Hvis vi har mange punkt, ta berre kvart andre for å redusere støy
+    // Downsample: if there are many points, take every other to reduce noise
     if (points.length > 40) {
         points = points.filter((_, i) => i % 2 === 0);
     }
 
-    // Bruk moving average for å glatte ut kurva
+    // Use moving average to smooth the curve
     return smoothData(points, 3);
   }, [history, currentTemp]);
 
-  // Sikre at vi alltid har data å plotte, sjølv om det berre er dummy-data for å vise rutenettet
+  // Ensure we always have data to plot, even if just dummy data to show the grid
   const plotData = data.length === 1 ? [data[0], { ...data[0], time: new Date(data[0].time.getTime() + 1000) }] : (data.length === 0 ? [{time: new Date(), temp: 0}, {time: new Date(Date.now() + 1000), temp: 0}] : data);
 
   const minTemp = Math.min(...plotData.map(d => d.temp));
   const maxTemp = Math.max(...plotData.map(d => d.temp));
 
-  // Legg til litt padding dynamisk basert på dataintervallet
+  // Add dynamic padding based on data interval
   const baseRange = maxTemp - minTemp || 1;
   const padding = Math.max(2, baseRange * 0.15);
   const yMin = minTemp - padding;
@@ -100,18 +100,18 @@ export default function WeatherGraph({ history, currentTemp }) {
   const getX = (t) => paddingX + ((t.getTime() - minTime) / timeRange) * (width - paddingX * 2);
   const getY = (temp) => height - ((temp - yMin) / yRange) * height;
 
-  // Generer punkt og mjuk bane
+  // Generate points and smooth path
   const points = plotData.map(p => [getX(p.time), getY(p.temp)]);
   const smoothPath = getSvgPath(points);
 
-  // Generer område for fyll (valfritt, men ser bra ut)
+  // Generate fill area (optional, improves appearance)
   const dArea = `${smoothPath} L ${points[points.length-1][0]},${height} L ${points[0][0]},${height} Z`;
 
-  // Definer fargeskalaen (Gradient Units UserSpaceOnUse gjer at vi kan mappe temp direkte til Y)
-  // Vi definerer gradienten slik at 0 grader er skillet mellom blått og grønt
+  // Define color scale (Gradient Units UserSpaceOnUse maps temp directly to Y)
+  // Gradient defined so that 0 degrees is the boundary between blue and green
   const yZero = getY(0);
-  const yTop = getY(30); // Varmt
-  const yBottom = getY(-15); // Kaldt
+  const yTop = getY(30); // Hot
+  const yBottom = getY(-15); // Cold
 
   return (
     <div className="w-full h-full relative">
@@ -122,7 +122,7 @@ export default function WeatherGraph({ history, currentTemp }) {
              <stop offset="30%" stopColor="#06b6d4" />
              <stop offset="50%" stopColor="#22c55e" />
              <stop offset="75%" stopColor="#eab308" />
-             <stop offset="100%" stopColor="#ef4444" /> {/* Varmt (Raud) */}
+             <stop offset="100%" stopColor="#ef4444" /> {/* Hot (Red) */}
           </linearGradient>
           
           {/* Enhanced fade mask for smoother bottom edge */}
@@ -137,13 +137,13 @@ export default function WeatherGraph({ history, currentTemp }) {
           </mask>
         </defs>
 
-        {/* Fyll under grafen */}
+        {/* Fill under the graph */}
         <path d={dArea} fill="url(#weatherGrad)" mask="url(#fillMask)" opacity="0.85" />
 
-        {/* Heile linja - Bezier curve with gradient */}
+        {/* Full line — Bezier curve with gradient */}
         <path d={smoothPath} fill="none" stroke="url(#weatherGrad)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
         
-        {/* Prikk for noverande temperatur */}
+        {/* Dot for current temperature */}
         {!isNaN(currentTemp) && (
           <>
             <circle cx={points[points.length-1][0]} cy={points[points.length-1][1]} r="6" fill="var(--card-bg)" stroke="url(#weatherGrad)" strokeWidth="4" />

@@ -129,7 +129,7 @@ export const ICON_MAP = {
   FaBottleDroplet, FaBottleWater, FaGlassWater, FaGlassWaterDroplet,
   FaHandHoldingDroplet, FaArrowUpFromGroundWater, FaArrowUpFromWaterPump,
   FaHouseFloodWater, FaHouseFloodWaterCircleArrowRight, FaCloudShowersWater,
-  FaCloudSunRain, FaTruckDroplet, FaWaterLadder, FaWater, FaTarpDroplet,
+  FaCloudSunRain, FaTruckDroplet, FaWaterLadder, FaTarpDroplet,
   FaStairs,
   FaTemperatureHigh, FaTemperatureLow, FaThermometer, FaTemperatureArrowDown, FaTemperatureArrowUp,
   FaTemperatureEmpty, FaTemperatureFull, FaTemperatureHalf, FaTemperatureQuarter, FaTemperatureThreeQuarters,

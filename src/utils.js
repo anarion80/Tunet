@@ -33,3 +33,10 @@ export const parseMarkdown = (text) => {
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1</a>')
     .replace(/\n/g, '<br />');
 };
+
+/** Check if an entity belongs to a togglable domain. */
+export const isToggleEntity = (id) => {
+  const domain = id?.split('.')?.[0];
+  const toggleDomains = ['automation', 'switch', 'input_boolean', 'script', 'fan'];
+  return toggleDomains.includes(domain);
+};

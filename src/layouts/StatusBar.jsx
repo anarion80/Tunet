@@ -94,10 +94,10 @@ export default function StatusBar({
           <button
             onClick={() => setShowStatusPillsConfig(true)}
             className={`flex items-center gap-1.5 rounded-full border transition-all bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30 ${isMobile ? 'px-2 py-1 text-[10px]' : 'px-3 py-1'}`}
-            title="Rediger status piller"
+            title={t('statusBar.editPills')}
           >
             <Edit2 className="w-3 h-3" />
-            <span className="text-[10px] uppercase font-bold tracking-[0.2em]">Piller</span>
+            <span className="text-[10px] uppercase font-bold tracking-[0.2em]">{t('statusBar.pills')}</span>
           </button>
         )}
         

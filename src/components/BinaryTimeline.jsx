@@ -101,7 +101,7 @@ export default function BinaryTimeline({ events, startTime, endTime }) {
           
           return (
              <div 
-               key={i} 
+               key={`${seg.start.getTime()}-${i}`} 
                style={{ width: `${widthPct}%` }} 
                className={`h-full ${showBorder ? 'border-r border-[var(--card-bg)]' : ''} last:border-0 ${getStyle(seg.state)} transition-all`}
                title={`${getLabel(seg.state)}: ${seg.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${seg.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`}

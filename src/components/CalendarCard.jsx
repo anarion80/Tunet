@@ -55,7 +55,7 @@ function CalendarCard({
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = useRef(null);
 
-  // Parse check status (user said "Det skal hukast av når kortet blir valgt")
+  // Parse check status ("It should be checked when the card is selected")
   // So settings.calendars = ['calendar.personal', 'calendar.work']
   const selectedCalendars = settings?.calendars || [];
   const selectedCalendarsKey = useMemo(() => selectedCalendars.join('|'), [selectedCalendars]);
@@ -223,7 +223,7 @@ function CalendarCard({
   const nextIsAllDay = nextEvent ? isAllDayValue(nextEvent.start) : false;
   const nextTimeString = nextEvent
     ? (nextIsAllDay
-        ? (nextEventStart ? formatDateHeader(nextEventStart.toLocaleDateString('sv-SE')) : 'Heile dagen')
+        ? (nextEventStart ? formatDateHeader(nextEventStart.toLocaleDateString('sv-SE')) : t('calendar.allDay'))
         : (nextEventStartTime ? `${nextEventStartTime}${nextEventEndTime ? ` - ${nextEventEndTime}` : ''}` : ''))
     : '';
 
@@ -336,7 +336,7 @@ function CalendarCard({
                           const endTime = formatEventTime(end);
 
                           const isAllDay = isAllDayValue(evt.start);
-                          const timeString = isAllDay ? 'Heile dagen' : (startTime ? `${startTime}${endTime ? ` - ${endTime}` : ''}` : '');
+                          const timeString = isAllDay ? t('calendar.allDay') : (startTime ? `${startTime}${endTime ? ` - ${endTime}` : ''}` : '');
                            
                            return (
                            <div key={`${evt.uid || evt.id || evt.summary || 'event'}-${idx}`} className="flex gap-4 group items-start">

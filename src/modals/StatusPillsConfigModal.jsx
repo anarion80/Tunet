@@ -128,14 +128,14 @@ export default function StatusPillsConfigModal({
   );
 
   const colorPresets = [
-    { name: 'Blue', bg: 'rgba(59, 130, 246, 0.3)', icon: 'text-blue-400', label: 'Blå' },
-    { name: 'Green', bg: 'rgba(34, 197, 94, 0.3)', icon: 'text-green-400', label: 'Grøn' },
-    { name: 'Red', bg: 'rgba(239, 68, 68, 0.3)', icon: 'text-red-400', label: 'Raud' },
-    { name: 'Orange', bg: 'rgba(249, 115, 22, 0.3)', icon: 'text-orange-400', label: 'Oransje' },
-    { name: 'Yellow', bg: 'rgba(234, 179, 8, 0.3)', icon: 'text-yellow-400', label: 'Gul' },
-    { name: 'Purple', bg: 'rgba(168, 85, 247, 0.3)', icon: 'text-purple-400', label: 'Lilla' },
-    { name: 'Pink', bg: 'rgba(236, 72, 153, 0.3)', icon: 'text-pink-400', label: 'Rosa' },
-    { name: 'Emerald', bg: 'rgba(16, 185, 129, 0.3)', icon: 'text-emerald-400', label: 'Smaragd' }
+    { name: 'Blue', bg: 'rgba(59, 130, 246, 0.3)', icon: 'text-blue-400', label: t('statusPills.colorBlue') },
+    { name: 'Green', bg: 'rgba(34, 197, 94, 0.3)', icon: 'text-green-400', label: t('statusPills.colorGreen') },
+    { name: 'Red', bg: 'rgba(239, 68, 68, 0.3)', icon: 'text-red-400', label: t('statusPills.colorRed') },
+    { name: 'Orange', bg: 'rgba(249, 115, 22, 0.3)', icon: 'text-orange-400', label: t('statusPills.colorOrange') },
+    { name: 'Yellow', bg: 'rgba(234, 179, 8, 0.3)', icon: 'text-yellow-400', label: t('statusPills.colorYellow') },
+    { name: 'Purple', bg: 'rgba(168, 85, 247, 0.3)', icon: 'text-purple-400', label: t('statusPills.colorPurple') },
+    { name: 'Pink', bg: 'rgba(236, 72, 153, 0.3)', icon: 'text-pink-400', label: t('statusPills.colorPink') },
+    { name: 'Emerald', bg: 'rgba(16, 185, 129, 0.3)', icon: 'text-emerald-400', label: t('statusPills.colorEmerald') }
   ];
 
   return (
@@ -164,11 +164,11 @@ export default function StatusPillsConfigModal({
           {/* Pills List */}
           <div className="w-full md:w-1/3 h-[250px] md:h-full border-r-0 border-b md:border-b-0 md:border-r border-[var(--glass-border)] p-4 overflow-y-auto shrink-0">
             <div className="flex items-center justify-between mb-4 relative" ref={addMenuRef}>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Dine Pills</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">{t('statusPills.yourPills')}</h3>
               <button
                 onClick={() => setShowAddMenu(!showAddMenu)}
                 className="p-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                title="Legg til ny pille"
+                title={t('statusPills.addNewPill')}
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -211,7 +211,7 @@ export default function StatusPillsConfigModal({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-[var(--text-primary)] truncate">
-                          {pill.name || pill.label || entity?.attributes?.friendly_name || pill.entityId || 'Ny pille'}
+                          {pill.name || pill.label || entity?.attributes?.friendly_name || pill.entityId || t('statusPills.newPill')}
                         </p>
                       </div>
                     </button>
@@ -253,9 +253,7 @@ export default function StatusPillsConfigModal({
               })}
               
               {pills.length === 0 && (
-                <p className="text-center text-gray-500 text-sm py-8">
-                  Ingen piller lagt til enno.<br/>Trykk + for å legge til.
-                </p>
+                <p className="text-center text-gray-500 text-sm py-8" dangerouslySetInnerHTML={{ __html: t('statusPills.noPillsYet') }} />
               )}
             </div>
           </div>
@@ -277,13 +275,13 @@ export default function StatusPillsConfigModal({
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{pill.type === 'conditional' ? 'Sensor' : pill.type === 'media_player' ? 'Media' : pill.type === 'emby' ? 'Emby' : 'Sonos'}</span>
                         {pill.type === 'conditional' && <div className="w-1 h-1 bg-gray-500 rounded-full"></div>}
-                        {pill.type === 'conditional' && <span className="text-xs text-gray-500">Standard Pille</span>}
+                        {pill.type === 'conditional' && <span className="text-xs text-gray-500">{t('statusPills.standardPill')}</span>}
                       </div>
                       <input
                         type="text"
                         value={pill.name || ''}
                         onChange={(e) => updatePill(pill.id, { name: e.target.value })}
-                        placeholder="Namn på pille"
+                        placeholder={t('statusPills.pillNamePlaceholder')}
                         className="w-full bg-transparent text-xl font-bold text-[var(--text-primary)] outline-none placeholder:text-gray-600"
                       />
                     </div>
@@ -360,7 +358,7 @@ export default function StatusPillsConfigModal({
                                 <div className="absolute top-full left-0 right-0 mt-2 p-2 rounded-xl bg-[var(--modal-bg)] shadow-2xl z-50 max-h-64 overflow-y-auto w-64">
                                   <input
                                     type="text"
-                                    placeholder="Søk ikon..."
+                                    placeholder={t('statusPills.searchIcon')}
                                     value={iconSearch}
                                     onChange={(e) => setIconSearch(e.target.value)}
                                     className="w-full px-3 py-2 rounded-lg bg-[var(--glass-bg)] text-[var(--text-primary)] outline-none mb-2 border-0"
@@ -426,7 +424,7 @@ export default function StatusPillsConfigModal({
                                   : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'
                               }`}
                             >
-                              Vel spesifikke spelarar
+                              {t('statusPills.selectSpecificPlayers')}
                             </button>
                             <button
                               onClick={() => updatePill(pill.id, { mediaSelectionMode: 'filter', mediaEntityIds: [], entityId: '' })}
@@ -436,7 +434,7 @@ export default function StatusPillsConfigModal({
                                   : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'
                               }`}
                             >
-                              Bruk filter
+                              {t('statusPills.useFilter')}
                             </button>
                            </div>
                         </div>
@@ -458,12 +456,12 @@ export default function StatusPillsConfigModal({
                                   onChange={(e) => updatePill(pill.id, { mediaFilterMode: e.target.value })}
                                   className="w-full px-3 py-1.5 rounded-lg bg-[var(--modal-bg)] text-[var(--text-primary)] outline-none border-0 text-xs font-bold"
                                 >
-                                  <option value="startsWith">Startar med</option>
-                                  <option value="contains">Inneheld</option>
-                                  <option value="regex">Regex</option>
+                                  <option value="startsWith">{t('statusPills.filterStartsWith')}</option>
+                                  <option value="contains">{t('statusPills.filterContains')}</option>
+                                  <option value="regex">{t('statusPills.filterRegex')}</option>
                                 </select>
                             </div>
-                            <p className="text-[10px] text-[var(--text-muted)]">* fungerer som wildcard. Bruk komma for fleire mønster.</p>
+                            <p className="text-[10px] text-[var(--text-muted)]">{t('statusPills.filterHint')}</p>
                          </div>
                       )}
 
@@ -474,7 +472,7 @@ export default function StatusPillsConfigModal({
                             type="text"
                             value={entitySearch}
                             onChange={(e) => setEntitySearch(e.target.value)}
-                            placeholder="Søk spelar..."
+                            placeholder={t('statusPills.searchPlayer')}
                             className="w-full px-3 py-2 rounded-xl bg-[var(--glass-bg)] text-[var(--text-primary)] outline-none border-0 text-sm"
                           />
                           <div className="max-h-40 overflow-y-auto space-y-1 rounded-xl bg-[var(--glass-bg)] p-2 custom-scrollbar">
@@ -524,7 +522,7 @@ export default function StatusPillsConfigModal({
                               setEntitySearch('');
                               setShowEntityPicker(true);
                             }}
-                            placeholder={pill.entityId ? (entities[pill.entityId]?.attributes?.friendly_name || pill.entityId) : 'Søk etter entitet...'}
+                            placeholder={pill.entityId ? (entities[pill.entityId]?.attributes?.friendly_name || pill.entityId) : t('statusPills.searchEntity')}
                             className="w-full px-3 py-2 rounded-xl bg-[var(--glass-bg)] text-[var(--text-primary)] outline-none border-0 text-sm"
                           />
                           {showEntityPicker && (
@@ -571,7 +569,7 @@ export default function StatusPillsConfigModal({
                       {pill.type === 'emby' && (
                          <div className="bg-[var(--glass-bg)] rounded-xl p-3">
                              <div className="flex items-center justify-between mb-2">
-                                <label className="text-[10px] uppercase font-bold text-gray-500">Sessions‑sensorar (valfri)</label>
+                                <label className="text-[10px] uppercase font-bold text-gray-500">{t('statusPills.sessionSensors')}</label>
                              </div>
                              <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar">
                                 {sessionSensorOptions.map((id) => {
@@ -590,7 +588,7 @@ export default function StatusPillsConfigModal({
                                     </button>
                                   );
                                 })}
-                                {sessionSensorOptions.length === 0 && <p className="text-xs text-center text-[var(--text-muted)] italic">Ingen sessions-sensorar</p>}
+                                {sessionSensorOptions.length === 0 && <p className="text-xs text-center text-[var(--text-muted)] italic">{t('statusPills.noSessionSensors')}</p>}
                              </div>
                          </div>
                       )}
@@ -600,23 +598,23 @@ export default function StatusPillsConfigModal({
                     {/* Condition Group */}
                     <section className="space-y-3">
                       <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
-                        Synlegheit {pill.type !== 'conditional' && '(valfritt)'}
+                        {t('statusPills.visibility')} {pill.type !== 'conditional' && t('statusPills.visibilityOptional')}
                       </h4>
                       
                       <div className="bg-[var(--glass-bg)] p-3 rounded-xl flex flex-col gap-3">
                         {/* Sentence Builder */}
                         <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="text-[var(--text-secondary)]">Vis når</span>
-                            <span className="font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">denne entiteten</span>
+                            <span className="text-[var(--text-secondary)]">{t('statusPills.showWhen')}</span>
+                            <span className="font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">{t('statusPills.thisEntity')}</span>
                             <select
                               value={pill.condition?.type || 'state'}
                               onChange={(e) => updatePill(pill.id, { condition: { ...pill.condition, type: e.target.value }})}
                               className="bg-[var(--modal-bg)] text-[var(--text-primary)] font-bold text-xs px-2 py-1 rounded outline-none border border-[var(--glass-border)]"
                             >
-                              <option value="state">er</option>
-                              <option value="not_state">ikkje er</option>
-                              <option value="numeric">har verdi</option>
-                              <option value="attribute">har attributt</option>
+                              <option value="state">{t('statusPills.condIs')}</option>
+                              <option value="not_state">{t('statusPills.condIsNot')}</option>
+                              <option value="numeric">{t('statusPills.condHasValue')}</option>
+                              <option value="attribute">{t('statusPills.condHasAttr')}</option>
                             </select>
                         </div>
 
@@ -626,7 +624,7 @@ export default function StatusPillsConfigModal({
                               <div className="space-y-2">
                                 <div className="flex flex-wrap gap-1.5 min-h-[26px]">
                                     {(pill.condition?.states || []).map((state, idx) => (
-                                      <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">
+                                      <span key={`${state}-${idx}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">
                                         {state}
                                         <button onClick={() => {
                                             const newStates = [...(pill.condition?.states || [])];
@@ -635,13 +633,13 @@ export default function StatusPillsConfigModal({
                                         }} className="hover:text-white"><X className="w-3 h-3" /></button>
                                       </span>
                                     ))}
-                                    {(pill.condition?.states || []).length === 0 && <span className="text-xs text-[var(--text-muted)] italic">Ingen verdiar vald</span>}
+                                    {(pill.condition?.states || []).length === 0 && <span className="text-xs text-[var(--text-muted)] italic">{t('statusPills.noValuesSelected')}</span>}
                                 </div>
                                 <input
                                   type="text"
                                   value={stateInputValue}
                                   onChange={(e) => setStateInputValue(e.target.value)}
-                                  placeholder="Legg til verdi (t.d. on) + Enter"
+                                  placeholder={t('statusPills.addValuePlaceholder')}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && stateInputValue.trim()) {
                                       e.preventDefault();
@@ -665,15 +663,15 @@ export default function StatusPillsConfigModal({
                                   onChange={(e) => updatePill(pill.id, { condition: { ...pill.condition, operator: e.target.value }})}
                                   className="bg-[var(--modal-bg)] text-[var(--text-primary)] font-bold text-xs px-2 py-1.5 rounded outline-none"
                                 >
-                                  <option value=">">større enn</option>
-                                  <option value=">=">større/lik</option>
-                                  <option value="<">mindre enn</option>
-                                  <option value="<=">mindre/lik</option>
-                                  <option value="==">lik</option>
+                                  <option value=">">{t('statusPills.greaterThan')}</option>
+                                  <option value=">=">{t('statusPills.greaterOrEqual')}</option>
+                                  <option value="<">{t('statusPills.lessThan')}</option>
+                                  <option value="<=">{t('statusPills.lessOrEqual')}</option>
+                                  <option value="==">{t('statusPills.equal')}</option>
                                 </select>
                                 <input
                                   type="number"
-                                  placeholder="verdi"
+                                  placeholder={t('statusPills.valuePlaceholder')}
                                   value={pill.condition?.value || ''}
                                   onChange={(e) => updatePill(pill.id, { condition: { ...pill.condition, value: parseFloat(e.target.value) }})}
                                   className="w-24 px-3 py-1.5 rounded-lg bg-[var(--modal-bg)] text-[var(--text-primary)] text-sm outline-none border-0"
@@ -685,14 +683,14 @@ export default function StatusPillsConfigModal({
                              <div className="flex flex-col gap-2">
                                 <input
                                   type="text"
-                                  placeholder="Attributt (t.d. battery_level)"
+                                  placeholder={t('statusPills.attrPlaceholder')}
                                   value={pill.condition?.attribute || ''}
                                   onChange={(e) => updatePill(pill.id, { condition: { ...pill.condition, attribute: e.target.value }})}
                                   className="w-full px-3 py-1.5 rounded-lg bg-[var(--modal-bg)] text-[var(--text-primary)] text-sm outline-none border-0"
                                 />
                                 <input
                                   type="text"
-                                  placeholder="Verdi (valfritt)"
+                                  placeholder={t('statusPills.attrValuePlaceholder')}
                                   value={pill.condition?.value || ''}
                                   onChange={(e) => updatePill(pill.id, { condition: { ...pill.condition, value: e.target.value }})}
                                   className="w-full px-3 py-1.5 rounded-lg bg-[var(--modal-bg)] text-[var(--text-primary)] text-sm outline-none border-0"
@@ -751,10 +749,7 @@ export default function StatusPillsConfigModal({
               );
             })() : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                <p className="text-center">
-                  Vel ein pill til venstre for å redigere,<br/>
-                  eller trykk + for å legge til ny.
-                </p>
+                <p className="text-center" dangerouslySetInnerHTML={{ __html: t('statusPills.selectPillHint') }} />
               </div>
             )}
           </div>
@@ -766,14 +761,14 @@ export default function StatusPillsConfigModal({
             onClick={onClose}
             className="flex-1 py-3 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] font-bold uppercase tracking-widest transition-colors"
           >
-            Avbryt
+            {t('statusPills.cancel')}
           </button>
           <button
             onClick={handleSave}
             className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold uppercase tracking-widest transition-colors shadow-lg shadow-green-500/20"
           >
             <Check className="w-5 h-5 inline mr-2" />
-            Lagre
+            {t('statusPills.save')}
           </button>
         </div>
       </div>

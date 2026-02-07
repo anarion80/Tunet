@@ -63,11 +63,10 @@ export default function GenericAndroidTVCard({
       const seriesTitle = getA(displayEntityId, 'media_series_title');
       // If series title exists, it's a series.
       if (seriesTitle) {
-          title = title; // Episode Title
+          // title already holds episode title from media_title
           appName = seriesTitle; // Series Name in Subtitle
       } else {
-          // Movie
-          title = title; // Movie Title
+          // title already holds movie title from media_title
           // User wants App Name
           if (!appName) {
              appName = (displayEntityId !== mediaPlayerId ? customNames[displayEntityId] || displayEntity?.attributes?.friendly_name : null);
@@ -83,11 +82,12 @@ export default function GenericAndroidTVCard({
   const isSmall = size === 'small';
 
   const getAppLogo = (app) => {
-    // Priority: Custom keyword mapping based on entity name if linked player is active
+    // Detect linked player app from display entity attributes
     if (linkedActive) {
-        const entityName = displayEntity?.attributes?.friendly_name?.toLowerCase() || '';
-        if (entityName.includes('midttunet')) return 'https://cdn.simpleicons.org/jellyfin';
-        if (entityName.includes('bibliotek')) return 'https://cdn.simpleicons.org/emby';
+        const appId = displayEntity?.attributes?.app_id?.toLowerCase() || '';
+        const appName = displayEntity?.attributes?.app_name?.toLowerCase() || '';
+        if (appId.includes('jellyfin') || appName.includes('jellyfin')) return 'https://cdn.simpleicons.org/jellyfin';
+        if (appId.includes('emby') || appName.includes('emby')) return 'https://cdn.simpleicons.org/emby';
     }
 
     if (!app) return null;

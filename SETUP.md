@@ -1,187 +1,120 @@
-# Tunet Dashboard - Vite + Docker Setup Guide
+# Tunet Dashboard — Setup Guide
 
-## Project Structure
-```
-c:\Hassen\
-├── src/
-│   ├── App.jsx          # Main React component
-│   └── main.jsx         # React entry point
-├── index.html           # HTML template
-├── package.json         # Dependencies
-├── vite.config.js       # Vite configuration
-├── Dockerfile           # Docker image definition
-├── docker-compose.yml   # Docker Compose configuration
-├── .dockerignore         # Files to exclude from Docker
-└── .gitignore           # Files to exclude from git
-```
+> See also [README.md](README.md) for features and screenshots.
 
 ## Prerequisites
 
-1. **Docker Desktop for Windows**
-   - Download from: https://www.docker.com/products/docker-desktop
-   - Install and ensure Docker daemon is running
+| Requirement | Version |
+|---|---|
+| Node.js | 18+ |
+| npm | 9+ |
+| Docker (optional) | 20+ |
+| Home Assistant | Any recent version with long-lived access tokens |
 
-2. **WSL2 (Windows Subsystem for Linux 2)**
-   - Recommended for Docker on Windows
-   - Docker Desktop will guide you through setup
+## Project Structure
 
-## Setup Steps
-
-### 1. Install Dependencies (First Time Only)
-Open PowerShell in the project folder and run:
-```powershell
-npm install
+```
+tunet/
+├── src/
+│   ├── App.jsx              # Main dashboard component
+│   ├── main.jsx             # React entry point + error boundary
+│   ├── components/          # UI cards & widgets (30+ components)
+│   ├── modals/              # All dialog modals (20+ modals)
+│   ├── contexts/            # React contexts (Config, HA, Pages)
+│   ├── hooks/               # Custom hooks (modals, theme, energy, history)
+│   ├── services/            # Home Assistant WebSocket client + actions
+│   ├── i18n/                # Translations (en, nn)
+│   ├── layouts/             # Header, StatusBar
+│   ├── constants.js         # Timing & layout constants
+│   ├── cardUtils.js         # Card visibility & removal logic
+│   ├── gridLayout.js        # Grid layout algorithm
+│   ├── themes.js            # Theme definitions
+│   ├── icons.js             # Icon re-exports
+│   ├── iconMap.js           # MDI icon mapping
+│   ├── utils.js             # Shared utilities
+│   └── dashboard.css        # Dashboard-specific styles
+├── public/                  # Static assets & screenshots
+├── index.html               # HTML entry point
+├── package.json             # Dependencies & scripts
+├── vite.config.js           # Vite build config
+├── tailwind.config.js       # Tailwind CSS config
+├── eslint.config.js         # ESLint flat config
+├── Dockerfile               # Multi-stage Docker build
+├── docker-compose.yml       # Docker Compose config
+├── .prettierrc              # Code formatting
+└── .editorconfig            # Editor settings
 ```
 
-### 2. Build Docker Image
-```powershell
-docker build -t hassen-dashboard .
-```
+## Local Development
 
-### 3. Run with Docker
-
-**Option A: Using Docker Compose (Recommended)**
-```powershell
-docker-compose up -d
-```
-
-**Option B: Using Docker directly**
-```powershell
-docker run -d -p 5173:5173 --name hassen-dashboard hassen-dashboard
-```
-
-### 4. Access the Application
-Open your browser and navigate to:
-```
-http://localhost:5173
-```
-
-## Docker Commands
-
-### View running containers
-```powershell
-docker ps
-```
-
-### View logs
-```powershell
-docker logs hassen-dashboard
-```
-
-### Stop the container
-```powershell
-docker stop hassen-dashboard
-```
-
-### Start the container
-```powershell
-docker start hassen-dashboard
-```
-
-### Remove the container
-```powershell
-docker rm hassen-dashboard
-```
-
-### Remove the image
-```powershell
-docker rmi hassen-dashboard
-```
-
-## Development Mode (Without Docker)
-
-For local development without Docker:
-
-```powershell
+```bash
 # Install dependencies
 npm install
 
-# Start dev server (http://localhost:5173)
+# Start dev server at http://localhost:5173
 npm run dev
 
-# Build for production
+# Lint code
+npm run lint
+
+# Production build
 npm run build
 
 # Preview production build
 npm run preview
 ```
 
-## Docker Compose Features
+## Docker
 
-- **Automatic restart**: Container restarts unless manually stopped
-- **Port mapping**: 5173 → localhost:5173
-- **Health checks**: Monitors container health every 30 seconds
-- **Volumes**: Can be added for persistent data
+### Using Docker Compose (recommended)
+
+```bash
+docker-compose up -d
+```
+
+Access at `http://localhost:5173`.
+
+### Using Docker directly
+
+```bash
+docker build -t tunet-dashboard .
+docker run -d -p 5173:5173 --name tunet-dashboard tunet-dashboard
+```
+
+### Common Docker commands
+
+```bash
+docker logs tunet-dashboard      # View logs
+docker stop tunet-dashboard      # Stop
+docker start tunet-dashboard     # Start
+docker rm tunet-dashboard        # Remove container
+```
+
+## Configuration
+
+1. Open the dashboard in your browser
+2. Go to **Settings** (gear icon)
+3. Enter your Home Assistant URL (e.g. `https://homeassistant.local:8123`)
+4. Enter a **long-lived access token** (create one in HA → Profile → Security)
+5. Click **Test Connection** to verify
+
+All configuration is stored in `localStorage` — no server-side database needed.
+
+## Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| Port 5173 in use | Change the port in `docker-compose.yml`: `"5174:5173"` |
+| Build fails | Clear cache: `docker system prune -a` then rebuild |
+| Connection error | Verify HA URL and token. Check CORS settings if using external access. |
+| Docker daemon not running | Start Docker Desktop and wait for status indicator |
 
 ## Environment Variables
 
-Edit `docker-compose.yml` to add environment variables:
+You can add environment variables in `docker-compose.yml`:
 
 ```yaml
 environment:
   - NODE_ENV=production
-  - API_URL=http://your-api:8000
 ```
-
-## Troubleshooting
-
-### Container won't start
-```powershell
-# Check logs
-docker-compose logs app
-
-# Rebuild
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
-```
-
-### Port 5173 already in use
-```powershell
-# Change port in docker-compose.yml
-ports:
-  - "5174:5173"  # Map to 5174 instead
-```
-
-### Docker daemon not running
-- Open Docker Desktop application
-- Wait for status indicator to show it's running
-
-### Build fails on Windows
-- Ensure no trailing spaces in Dockerfile
-- Use CRLF line endings if needed
-- Clear Docker cache: `docker system prune -a`
-
-## File Changes to Make
-
-The following files have been created:
-
-1. **package.json** - NPM dependencies and scripts
-2. **vite.config.js** - Vite build configuration
-3. **index.html** - HTML entry point with Tailwind CSS
-4. **src/main.jsx** - React DOM render
-5. **src/App.jsx** - Your original app.jsx
-6. **Dockerfile** - Multi-stage build for production
-7. **docker-compose.yml** - Docker compose configuration
-8. **.dockerignore** - Files to exclude from image
-9. **.gitignore** - Files to exclude from version control
-
-## Next Steps
-
-1. Install Docker Desktop
-2. Navigate to your project directory
-3. Run `npm install`
-4. Run `docker-compose up -d`
-5. Open http://localhost:5173 in your browser
-
-## Production Notes
-
-- The Dockerfile uses a multi-stage build for optimized image size
-- Production uses `serve` to run the static site
-- Health checks ensure container is responsive
-- Node 20 Alpine is used for minimal image size (~150MB)
-
-## Icons
-
-- Supports MDI icons with the same naming as Home Assistant (e.g. `mdi:car-battery`).
 

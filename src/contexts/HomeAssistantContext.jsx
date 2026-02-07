@@ -26,7 +26,7 @@ export const HomeAssistantProvider = ({ children, config }) => {
       return; 
     }
     const script = document.createElement('script');
-    script.src = "https://unpkg.com/home-assistant-js-websocket@latest/dist/haws.umd.js";
+    script.src = "https://unpkg.com/home-assistant-js-websocket@9.6.0/dist/haws.umd.js";
     script.async = true;
     script.onload = () => setLibLoaded(true);
     document.head.appendChild(script);

@@ -2,6 +2,8 @@
 
 A modern React dashboard for home automation and energy monitoring with Home Assistant integration.
 
+> 💡 **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines
+
 ## Features
 
 ### Dashboard Controls
@@ -52,6 +54,8 @@ You can add various card types to customize your dashboard:
    ```bash
    git clone https://github.com/oyvhov/tunet.git
    cd tunet
+   ```
+
 2. **Install dependencies**
    ```bash
    npm install
@@ -124,16 +128,20 @@ docker-compose up
 ```
 src/
  App.jsx              # Main component
- components/          # UI components
- hooks/              # Custom hooks
- services/           # HA integration
- i18n/               # Translations
- themes.js           # Theme config
+ components/          # UI cards & widgets
+ modals/              # Dialog modals
+ contexts/            # React contexts (Config, HA, Pages)
+ hooks/               # Custom hooks
+ services/            # HA WebSocket client
+ i18n/                # Translations (en, nn)
+ layouts/             # Header, StatusBar
 ```
+
+See [SETUP.md](SETUP.md) for the full project structure and detailed setup instructions.
 
 ## License
 
-MIT - See [LICENSE](LICENSE) for details
+GNU General Public License v3.0 - See [LICENSE](LICENSE) for details
 
 ## Author
 

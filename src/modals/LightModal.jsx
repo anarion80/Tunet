@@ -245,7 +245,7 @@ export default function LightModal({
                    {activeTab === 'warmth' && (
                      <div className="space-y-2 md:space-y-4">
                         <div className="flex justify-between items-end px-1">
-                           <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">Temperatur</label>
+                           <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">{t('light.colorTemperature')}</label>
                            <span className="text-lg font-medium text-[var(--text-primary)] font-mono">{localKelvin}K</span>
                         </div>
                         <div className="relative w-full h-10 touch-none rounded-xl overflow-hidden shadow-inner">

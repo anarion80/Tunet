@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   app:
     build: .
     ports:
       - "5173:5173"
-    container_name: hassen-dashboard
+    container_name: tunet-dashboard
     restart: unless-stopped
     environment:
       - NODE_ENV=production

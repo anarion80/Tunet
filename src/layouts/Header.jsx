@@ -32,7 +32,7 @@ export default function Header({
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all shadow-lg backdrop-blur-md"
           >
             <Edit2 className="w-4 h-4 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-widest">Legg til header</span>
+            <span className="text-xs font-bold uppercase tracking-widest">{t('header.addHeader')}</span>
           </button>
         </div>
       )}
