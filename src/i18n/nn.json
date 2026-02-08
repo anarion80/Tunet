@@ -457,8 +457,8 @@
   "sensorInfo.noHistory": "Ingen historikk tilgjengeleg",
   "history.activity": "Aktivitet",
   "history.rangeHours": "Historikk (timar)",
-    "sensorInfo.showAttributes": "Vis attributt",
-    "sensorInfo.hideAttributes": "Skjul attributt",
+  "sensorInfo.showAttributes": "Vis attributt",
+  "sensorInfo.hideAttributes": "Skjul attributt",
   "history.last24h": "Siste 24t",
   "history.wasState": "Var {state}",
   "history.stateOnly": "{state}",
@@ -556,7 +556,6 @@
   "statusPills.noPillsYet": "Ingen piller lagt til enno.<br/>Trykk + for å legge til.",
   "statusPills.standardPill": "Standard Pille",
   "statusPills.pillNamePlaceholder": "Namn på pille",
-  "statusPills.searchIcon": "Søk ikon...",
   "statusPills.selectSpecificPlayers": "Vel spesifikke spelarar",
   "statusPills.useFilter": "Bruk filter",
   "statusPills.filterHint": "* fungerer som wildcard. Bruk komma for fleire mønster.",
@@ -578,5 +577,8 @@
   "header.addHeader": "Legg til header",
   "statusBar.editPills": "Rediger status piller",
   "statusBar.pills": "Piller",
-  "person.historyTitle": "Historikk (Siste 24t)"
+  "person.historyTitle": "Historikk (Siste 24t)",
+  "header.fontFamily": "Skrifttype",
+  "header.clockScale": "Klokkestørrelse",
+  "header.dateScale": "Datostørrelse"
 }
