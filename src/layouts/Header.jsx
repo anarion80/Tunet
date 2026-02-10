@@ -94,16 +94,6 @@ export default function Header({
                 >
                   {headerTitle || 'Tunet'}
                 </h1>
-                
-                {editMode && setShowHeaderEditModal && (
-                  <button
-                    onClick={() => setShowHeaderEditModal(true)}
-                    className="p-2 rounded-full hover:bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                    title="Rediger heading"
-                  >
-                    <Edit2 className="w-4 h-4 text-blue-400 animate-pulse" />
-                  </button>
-                )}
               </>
             )}
           </div>

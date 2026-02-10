@@ -99,6 +99,7 @@ export {
   Link,
   Unlink,
   Search,
+  ListChecks,
   Palette,
   Download,
   ArrowRight,
@@ -136,5 +137,7 @@ export {
   ToggleLeft,
   ToggleRight,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Type,
+  AlignLeft
 } from 'lucide-react';

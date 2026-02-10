@@ -92,6 +92,7 @@ export default function EditCardModal({
   isEditGenericType,
   isEditSensor,
   isEditCalendar,
+  isEditTodo,
   isEditCost,
   isEditCar,
   isEditAndroidTV,
@@ -157,6 +158,7 @@ export default function EditCardModal({
 
   const climateOptions = sortByName(byDomain('climate'));
   const calendarOptions = sortByName(byDomain('calendar'));
+  const todoOptions = sortByName(byDomain('todo'));
   const mediaPlayerOptions = sortByName(byDomain('media_player'));
 
   const lastUpdatedOptions = sortByName(entityEntries
@@ -273,6 +275,33 @@ export default function EditCardModal({
                         saveCardSetting(editSettingsKey, 'calendars', next);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-xl transition-colors border ${selected ? 'bg-blue-500/15 border-blue-500/30 text-blue-400' : 'border-transparent hover:bg-[var(--glass-bg-hover)] text-[var(--text-secondary)]'}`}
+                    >
+                      <div className="text-sm font-bold truncate">{entities[id]?.attributes?.friendly_name || id}</div>
+                      <div className="text-[10px] text-[var(--text-muted)] truncate">{id}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {isEditTodo && editSettingsKey && (
+            <div className="space-y-3">
+              <label className="text-xs uppercase font-bold text-gray-500 ml-1">{t('todo.selectList') || 'Select Todo List'}</label>
+              <div className="popup-surface rounded-2xl p-4 max-h-56 overflow-y-auto custom-scrollbar space-y-2">
+                {todoOptions.length === 0 && (
+                  <p className="text-xs text-[var(--text-muted)] text-center py-4">{t('todo.noListsFound') || 'No todo lists found'}</p>
+                )}
+                {todoOptions.map((id) => {
+                  const selected = editSettings.todoEntityId === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        saveCardSetting(editSettingsKey, 'todoEntityId', selected ? null : id);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl transition-colors border ${selected ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'border-transparent hover:bg-[var(--glass-bg-hover)] text-[var(--text-secondary)]'}`}
                     >
                       <div className="text-sm font-bold truncate">{entities[id]?.attributes?.friendly_name || id}</div>
                       <div className="text-[10px] text-[var(--text-muted)] truncate">{id}</div>

@@ -18,6 +18,7 @@ export function useModals() {
   const [showVacuumModal, setShowVacuumModal] = useState(false);
   const [showSensorInfoModal, setShowSensorInfoModal] = useState(null);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showTodoModal, setShowTodoModal] = useState(null);
   const [showWeatherModal, setShowWeatherModal] = useState(null);
 
   // Media modal state
@@ -53,6 +54,7 @@ export function useModals() {
       showStatusPillsConfig ||
       showPersonModal ||
       showCalendarModal ||
+      showTodoModal ||
       showWeatherModal
     );
   };
@@ -69,6 +71,7 @@ export function useModals() {
     setShowVacuumModal(false);
     setShowSensorInfoModal(null);
     setShowCalendarModal(false);
+    setShowTodoModal(null);
     setShowWeatherModal(null);
     setActiveMediaModal(null);
     setActiveMediaGroupKey(null);
@@ -105,6 +108,8 @@ export function useModals() {
     setShowSensorInfoModal,
     showCalendarModal,
     setShowCalendarModal,
+    showTodoModal,
+    setShowTodoModal,
     showWeatherModal,
     setShowWeatherModal,
 

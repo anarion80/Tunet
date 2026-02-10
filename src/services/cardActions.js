@@ -75,6 +75,24 @@ export const handleAddSelected = (ctx) => {
     return;
   }
 
+  if (addCardType === 'todo') {
+    const cardId = `todo_card_${Date.now()}`;
+    newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
+    persistConfig(newConfig);
+
+    const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
+    const newSettings = {
+      ...cardSettings,
+      [settingsKey]: { ...(cardSettings[settingsKey] || {}), size: 'large' }
+    };
+    persistCardSettings(newSettings);
+
+    setShowAddCardModal(false);
+    setShowEditCardModal(cardId);
+    setEditCardSettingsKey(settingsKey);
+    return;
+  }
+
   if (addCardType === 'media') {
     if (selectedEntities.length === 0) return;
     const cardId = `media_group_${Date.now()}`;

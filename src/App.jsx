@@ -38,7 +38,6 @@ const CalendarModal = lazy(() => import('./modals/CalendarModal'));
 const ConfigModal = lazy(() => import('./modals/ConfigModal'));
 const CostModal = lazy(() => import('./modals/CostModal'));
 const EditCardModal = lazy(() => import('./modals/EditCardModal'));
-const EditHeaderModal = lazy(() => import('./modals/EditHeaderModal'));
 const EditPageModal = lazy(() => import('./modals/EditPageModal'));
 const GenericAndroidTVModal = lazy(() => import('./modals/GenericAndroidTVModal'));
 const GenericClimateModal = lazy(() => import('./modals/GenericClimateModal'));
@@ -50,12 +49,21 @@ const NordpoolModal = lazy(() => import('./modals/NordpoolModal'));
 const PersonModal = lazy(() => import('./modals/PersonModal'));
 const SensorModal = lazy(() => import('./modals/SensorModal'));
 const StatusPillsConfigModal = lazy(() => import('./modals/StatusPillsConfigModal'));
+const TodoModal = lazy(() => import('./modals/TodoModal'));
 const VacuumModal = lazy(() => import('./modals/VacuumModal'));
+
+// Sidebars
+const ThemeSidebar = lazy(() => import('./components/ThemeSidebar'));
+const LayoutSidebar = lazy(() => import('./components/LayoutSidebar'));
+const HeaderSidebar = lazy(() => import('./components/HeaderSidebar'));
+const SettingsDropdown = lazy(() => import('./components/SettingsDropdown'));
+
 import { Header, StatusBar } from './layouts';
 
 import {
   CalendarCard,
   CarCard,
+  TodoCard,
   GenericAndroidTVCard,
   GenericClimateCard,
   GenericEnergyCostCard,
@@ -137,8 +145,10 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     savePageSetting,
     gridColumns,
     setGridColumns,
-    gridGap,
-    setGridGap,
+    gridGapH,
+    setGridGapH,
+    gridGapV,
+    setGridGapV,
     cardBorderRadius,
     setCardBorderRadius,
     headerScale,
@@ -163,7 +173,16 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     activeUrl
   } = useHomeAssistant();
   const translations = useMemo(() => ({ en, nn }), []);
-  const t = (key) => translations[language]?.[key] || translations.nn[key] || key;
+  const nnFallback = useMemo(() => ({
+    'system.tabHeader': 'Topptekst',
+    'system.tabLayout': 'Oppsett'
+  }), []);
+  const t = (key) => {
+    const value = translations[language]?.[key] ?? translations.nn[key];
+    if (value !== undefined) return value;
+    if (language === 'nn' && nnFallback[key]) return nnFallback[key];
+    return key;
+  };
   const resolvedHeaderTitle = headerTitle || t('page.home');
   const [now, setNow] = useState(new Date());
   
@@ -190,6 +209,8 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     setShowSensorInfoModal,
     showCalendarModal,
     setShowCalendarModal,
+    showTodoModal,
+    setShowTodoModal,
     showWeatherModal,
     setShowWeatherModal,
     activeMediaModal,
@@ -220,6 +241,8 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   
   const [activeVacuumId, setActiveVacuumId] = useState(null);
   const [configTab, setConfigTab] = useState('connection');
+  const [showThemeSidebar, setShowThemeSidebar] = useState(false);
+  const [showLayoutSidebar, setShowLayoutSidebar] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingUrlError, setOnboardingUrlError] = useState('');
   const [onboardingTokenError, setOnboardingTokenError] = useState('');
@@ -276,6 +299,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
         setEditMode(false);
         setShowStatusPillsConfig(false);
         setShowCalendarModal(false);
+        setShowTodoModal(null);
         setShowWeatherModal(null);
     }
   };
@@ -988,7 +1012,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
       const editId = targetId || cardId;
       const isHidden = hiddenCards.includes(cardId) || isCardHiddenByLogic(cardId);
       const settings = cardSettings[settingsKey] || cardSettings[editId] || {};
-      const canToggleSize = (editId.startsWith('light_') || editId.startsWith('light.') || editId.startsWith('vacuum.') || editId.startsWith('automation.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || editId.startsWith('weather_temp_') || editId.startsWith('androidtv_card_') || editId.startsWith('calendar_card_') || editId.startsWith('nordpool_card_') || editId === 'car' || editId.startsWith('car_card_') || settings.type === 'entity' || settings.type === 'toggle' || settings.type === 'sensor');
+      const canToggleSize = (editId.startsWith('light_') || editId.startsWith('light.') || editId.startsWith('vacuum.') || editId.startsWith('automation.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || editId.startsWith('weather_temp_') || editId.startsWith('androidtv_card_') || editId.startsWith('calendar_card_') || editId.startsWith('todo_card_') || editId.startsWith('nordpool_card_') || editId === 'car' || editId.startsWith('car_card_') || settings.type === 'entity' || settings.type === 'toggle' || settings.type === 'sensor');
       return ( 
       <>
         <div className="absolute top-2 left-2 z-50 flex gap-2">
@@ -1028,14 +1052,14 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               onClick={(e) => { 
                 e.stopPropagation();
                 const currentSize = cardSettings[settingsKey]?.size || 'large';
-                const nextSize = editId.startsWith('calendar_card_')
+                const nextSize = (editId.startsWith('calendar_card_') || editId.startsWith('todo_card_'))
                   ? (currentSize === 'small' ? 'medium' : (currentSize === 'medium' ? 'large' : 'small'))
                   : (currentSize === 'small' ? 'large' : 'small');
                 saveCardSetting(settingsKey, 'size', nextSize); 
               }}
               className="p-2 rounded-full transition-colors hover:bg-purple-500/80 text-white border border-white/20 shadow-lg"
               style={{backgroundColor: cardSettings[settingsKey]?.size === 'small' ? 'rgba(168, 85, 247, 0.8)' : 'rgba(0, 0, 0, 0.6)'}}
-              title={editId.startsWith('calendar_card_') ? 'Bytt storleik' : (cardSettings[settingsKey]?.size === 'small' ? t('tooltip.largeSize') : t('tooltip.smallSize'))}
+              title={(editId.startsWith('calendar_card_') || editId.startsWith('todo_card_')) ? 'Bytt storleik' : (cardSettings[settingsKey]?.size === 'small' ? t('tooltip.largeSize') : t('tooltip.smallSize'))}
             >
               {cardSettings[settingsKey]?.size === 'small' ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
             </button>
@@ -1157,6 +1181,36 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
       return renderGenericClimateCard(cardId, dragProps, getControls, cardStyle, settingsKey);
     }
 
+    if (cardId.startsWith('todo_card_')) {
+      const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
+      return (
+        <TodoCard
+           key={cardId}
+           cardId={cardId}
+           settings={cardSettings[settingsKey] || cardSettings[cardId] || {}}
+           conn={conn}
+           t={t}
+           dragProps={dragProps}
+           getControls={getControls}
+           isEditMode={editMode}
+           className="h-full"
+           style={cardStyle}
+           size={sizeSetting}
+           iconName={customIcons[cardId] || null}
+           customName={customNames[cardId] || null}
+           onClick={(e) => {
+             e.stopPropagation();
+             if (editMode) {
+               setShowEditCardModal(cardId);
+               setEditCardSettingsKey(settingsKey);
+             } else {
+               setShowTodoModal(cardId);
+             }
+           }}
+        />
+      );
+    }
+
     if (cardId.startsWith('cost_card_')) {
       return renderGenericCostCard(cardId, dragProps, getControls, cardStyle, settingsKey);
     }
@@ -1232,6 +1286,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   const editEntity = editId ? entities[editId] : null;
   const isEditLight = !!editId && (editId.startsWith('light_') || editId.startsWith('light.'));
   const isEditCalendar = !!editId && editId.startsWith('calendar_card_');
+  const isEditTodo = !!editId && editId.startsWith('todo_card_');
   const isEditCost = !!editId && editId.startsWith('cost_card_');
   const isEditAndroidTV = !!editId && editId.startsWith('androidtv_card_');
   const isEditVacuum = !!editId && editId.startsWith('vacuum.');
@@ -1242,7 +1297,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   const isEditSensor = !!editSettings?.type && editSettings.type === 'sensor';
   const isEditWeatherTemp = !!editId && editId.startsWith('weather_temp_');
   const canEditName = !!editId && !isEditWeatherTemp && editId !== 'media_player' && editId !== 'sonos';
-  const canEditIcon = !!editId && (isEditLight || isEditCalendar || editId.startsWith('automation.') || editId.startsWith('vacuum.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || !!editEntity || editId === 'car' || editId.startsWith('car_card_'));
+  const canEditIcon = !!editId && (isEditLight || isEditCalendar || isEditTodo || editId.startsWith('automation.') || editId.startsWith('vacuum.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || !!editEntity || editId === 'car' || editId.startsWith('car_card_'));
   const canEditStatus = !!editEntity && !!editSettingsKey && editSettingsKey.startsWith('settings::');
   const isOnboardingActive = showOnboarding;
   const onboardingSteps = buildOnboardingSteps(t);
@@ -1365,6 +1420,8 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
         >
           <PageNavigation
             pages={pages}
+            pagesConfig={pagesConfig}
+            persistConfig={persistConfig}
             pageSettings={pageSettings}
             activePage={activePage}
             setActivePage={setActivePage}
@@ -1397,7 +1454,13 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               <Edit2 className="w-5 h-5" />
             </button>
             <div className="relative">
-              <button onClick={() => setShowConfigModal(true)} className={`p-2 rounded-full hover:bg-[var(--glass-bg)] transition-colors group`}><Settings className={`w-5 h-5 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]`} /></button>
+              <SettingsDropdown 
+                onOpenSettings={() => { setShowConfigModal(true); setConfigTab('connection'); }}
+                onOpenTheme={() => setShowThemeSidebar(true)}
+                onOpenLayout={() => setShowLayoutSidebar(true)}
+                onOpenHeader={() => setShowHeaderEditModal(true)}
+                t={t}
+              />
               {updateCount > 0 && (
                 <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center border-2 border-[var(--card-bg)] pointer-events-none shadow-sm">
                   <span className="text-[11px] font-bold text-white leading-none pt-[1px]">{updateCount}</span>
@@ -1452,7 +1515,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
              </div>
           </div>
         ) : (
-          <div key={activePage} className="grid font-sans page-transition items-start" style={{ gap: `${isMobile ? 12 : gridGap}px`, gridAutoRows: isMobile ? '82px' : '100px', gridTemplateColumns: `repeat(${gridColCount}, minmax(0, 1fr))` }}>
+          <div key={activePage} className="grid font-sans page-transition items-start" style={{ gap: isMobile ? '12px' : `${gridGapV}px ${gridGapH}px`, gridAutoRows: isMobile ? '82px' : '100px', gridTemplateColumns: `repeat(${gridColCount}, minmax(0, 1fr))` }}>
             {(pagesConfig[activePage] || [])
               .map((id) => ({ id, placement: gridLayout[id] }))
               .filter(({ placement }) => placement)
@@ -1464,8 +1527,10 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               const index = (pagesConfig[activePage] || []).indexOf(id);
               const placement = gridLayout[id];
               const isCalendarCard = id.startsWith('calendar_card_');
-              const sizeSetting = isCalendarCard ? (cardSettings[getCardSettingsKey(id)]?.size || cardSettings[id]?.size) : null;
-              const forcedSpan = isCalendarCard
+              const isTodoCard = id.startsWith('todo_card_');
+              const isLargeCard = isCalendarCard || isTodoCard;
+              const sizeSetting = isLargeCard ? (cardSettings[getCardSettingsKey(id)]?.size || cardSettings[id]?.size) : null;
+              const forcedSpan = isLargeCard
                 ? (sizeSetting === 'small' ? 1 : (sizeSetting === 'medium' ? 2 : 4))
                 : placement?.span;
               const settingsKey = getCardSettingsKey(id);
@@ -1484,7 +1549,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
                     gridRowStart: placement.row,
                     gridColumnStart: placement.col,
                     gridRowEnd: `span ${forcedSpan}`,
-                    minHeight: isCalendarCard && sizeSetting !== 'small' && sizeSetting !== 'medium' ? `${(4 * 100) + (3 * (isMobile ? 12 : gridGap))}px` : undefined
+                    minHeight: isLargeCard && sizeSetting !== 'small' && sizeSetting !== 'medium' ? `${(4 * 100) + (3 * (isMobile ? 12 : gridGapV))}px` : undefined
                   }}
                 >
                   {heading && (
@@ -1533,8 +1598,10 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           setLanguage={setLanguage}
           inactivityTimeout={inactivityTimeout}
           setInactivityTimeout={setInactivityTimeout}
-          gridGap={gridGap}
-          setGridGap={setGridGap}
+          gridGapH={gridGapH}
+          setGridGapH={setGridGapH}
+          gridGapV={gridGapV}
+          setGridGapV={setGridGapV}
           gridColumns={gridColumns}
           setGridColumns={setGridColumns}
           cardBorderRadius={cardBorderRadius}
@@ -1561,6 +1628,56 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             />
           </ModalSuspense>
         )}
+
+        {/* New Sidebars */}
+        <ModalSuspense>
+          <ThemeSidebar 
+            open={showThemeSidebar}
+            onClose={() => setShowThemeSidebar(false)}
+            onSwitchToLayout={() => { setShowThemeSidebar(false); setShowLayoutSidebar(true); }}
+            onSwitchToHeader={() => { setShowThemeSidebar(false); setShowHeaderEditModal(true); }}
+            t={t}
+            themes={themes}
+            currentTheme={currentTheme}
+            setCurrentTheme={setCurrentTheme}
+            language={language}
+            setLanguage={setLanguage}
+            bgMode={bgMode}
+            setBgMode={setBgMode}
+            bgColor={bgColor}
+            setBgColor={setBgColor}
+            bgGradient={bgGradient}
+            setBgGradient={setBgGradient}
+            bgImage={bgImage}
+            setBgImage={setBgImage}
+            inactivityTimeout={inactivityTimeout}
+            setInactivityTimeout={setInactivityTimeout}
+          />
+        </ModalSuspense>
+        
+        <ModalSuspense>
+          <LayoutSidebar
+            open={showLayoutSidebar}
+            onClose={() => setShowLayoutSidebar(false)}
+            onSwitchToTheme={() => { setShowLayoutSidebar(false); setShowThemeSidebar(true); }}
+            onSwitchToHeader={() => { setShowLayoutSidebar(false); setShowHeaderEditModal(true); }}
+            t={t}
+            gridGapH={gridGapH}
+            setGridGapH={setGridGapH}
+            gridGapV={gridGapV}
+            setGridGapV={setGridGapV}
+            gridColumns={gridColumns}
+            setGridColumns={setGridColumns}
+            cardBorderRadius={cardBorderRadius}
+            setCardBorderRadius={setCardBorderRadius}
+            cardTransparency={cardTransparency}
+            setCardTransparency={setCardTransparency}
+            cardBorderOpacity={cardBorderOpacity}
+            setCardBorderOpacity={setCardBorderOpacity}
+            sectionSpacing={sectionSpacing}
+            updateSectionSpacing={updateSectionSpacing}
+          />
+        </ModalSuspense>
 
         {showNordpoolModal && (() => {
           const data = prepareNordpoolData(showNordpoolModal, { getCardSettingsKey, cardSettings, entities, customNames });
@@ -1778,6 +1895,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           canEditStatus={canEditStatus}
           isEditLight={isEditLight}
           isEditCalendar={isEditCalendar}
+          isEditTodo={isEditTodo}
           isEditCost={isEditCost}
           isEditGenericType={isEditGenericType}
           isEditAndroidTV={isEditAndroidTV}
@@ -1813,21 +1931,21 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           </ModalSuspense>
         )}
 
-        {showHeaderEditModal && (
-          <ModalSuspense>
-            <EditHeaderModal
-          show={showHeaderEditModal}
-          onClose={() => setShowHeaderEditModal(false)}
-          headerTitle={headerTitle}
-          headerScale={headerScale}
-          headerSettings={headerSettings}
-          updateHeaderTitle={updateHeaderTitle}
-          updateHeaderScale={updateHeaderScale}
-          updateHeaderSettings={updateHeaderSettings}
-          t={t}
-            />
-          </ModalSuspense>
-        )}
+        <ModalSuspense>
+          <HeaderSidebar
+            open={showHeaderEditModal}
+            onClose={() => setShowHeaderEditModal(false)}
+            headerTitle={headerTitle}
+            headerScale={headerScale}
+            headerSettings={headerSettings}
+            updateHeaderTitle={updateHeaderTitle}
+            updateHeaderScale={updateHeaderScale}
+            updateHeaderSettings={updateHeaderSettings}
+            onSwitchToTheme={() => { setShowHeaderEditModal(false); setShowThemeSidebar(true); }}
+            onSwitchToLayout={() => { setShowHeaderEditModal(false); setShowLayoutSidebar(true); }}
+            t={t}
+          />
+        </ModalSuspense>
 
         {activeMediaModal && (
           <ModalSuspense>
@@ -1885,6 +2003,23 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             />
           </ModalSuspense>
         )}
+
+        {showTodoModal && (() => {
+          const todoSettingsKey = getCardSettingsKey(showTodoModal);
+          const todoSettings = cardSettings[todoSettingsKey] || cardSettings[showTodoModal] || {};
+          return (
+            <ModalSuspense>
+              <TodoModal
+                show={true}
+                onClose={() => setShowTodoModal(null)}
+                conn={conn}
+                entities={entities}
+                settings={todoSettings}
+                t={t}
+              />
+            </ModalSuspense>
+          );
+        })()}
 
         {showWeatherModal && (() => {
           const settingsKey = getCardSettingsKey(showWeatherModal);

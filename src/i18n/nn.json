@@ -45,6 +45,7 @@
   "welcome.description": "Denne sida er tom. Trykk på knappen under for å begynne å bygge dashboardet ditt.",
   "welcome.editHint": "Du kan alltids endre oppsettet seinare ved å trykke på 'Rediger'-knappen i menyen.",
   "common.missing": "Manglar",
+  "common.ok": "OK",
   "settings.theme": "Tema",
   "settings.language": "Språk",
   "settings.inactivity": "Tilbake til Heim (sek)",
@@ -99,6 +100,9 @@
   "form.search": "Søk...",
   "form.noResults": "Ingen treff",
   "form.noIconsFound": "Ingen ikon funne",
+  "form.pageOrder": "Rekkefølge",
+  "form.movePageUp": "Flytt opp",
+  "form.movePageDown": "Flytt ned",
   "form.hidePage": "Skjul side",
   "form.deletePage": "Slett side",
   "form.smallVersion": "Liten versjon",
@@ -580,5 +584,9 @@
   "person.historyTitle": "Historikk (Siste 24t)",
   "header.fontFamily": "Skrifttype",
   "header.clockScale": "Klokkestørrelse",
-  "header.dateScale": "Datostørrelse"
+  "header.dateScale": "Datostørrelse",
+  "settings.bgAurora": "Aurora",
+  "settings.gridGapH": "Vannrett mellomrom",
+  "settings.gridGapV": "Loddrett mellomrom",
+  "settings.reset": "Nullstill"
 }

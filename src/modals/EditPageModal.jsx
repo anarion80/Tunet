@@ -75,6 +75,13 @@ const EditPageModal = ({
                {t('form.deletePage')}
              </button>
            )}
+
+           <button
+             onClick={onClose}
+             className="w-full py-3 rounded-2xl bg-[var(--glass-bg-hover)] text-[var(--text-primary)] font-bold uppercase tracking-widest hover:bg-[var(--glass-bg)] transition-colors"
+           >
+             {t('common.ok')}
+           </button>
          </div>
       </div>
     </div>

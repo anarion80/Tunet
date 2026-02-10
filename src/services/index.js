@@ -4,7 +4,11 @@ export {
   getHistoryRest,
   getStatistics,
   getForecast,
-  getCalendarEvents
+  getCalendarEvents,
+  getTodoItems,
+  addTodoItem,
+  updateTodoItem,
+  removeTodoItem
 } from './haClient';
 
 export { handleAddSelected } from './cardActions';

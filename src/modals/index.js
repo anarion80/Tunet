@@ -13,4 +13,5 @@ export { default as NordpoolModal } from './NordpoolModal';
 export { default as PersonModal } from './PersonModal';
 export { default as SensorModal } from './SensorModal';
 export { default as StatusPillsConfigModal } from './StatusPillsConfigModal';
+export { default as TodoModal } from './TodoModal';
 export { default as VacuumModal } from './VacuumModal';

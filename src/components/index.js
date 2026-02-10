@@ -16,6 +16,7 @@ export { default as SensorCard } from './SensorCard';
 export { default as MediaPage } from './MediaPage';
 export { default as SparkLine } from './SparkLine';
 export { default as StatusPill } from './StatusPill';
+export { default as TodoCard } from './TodoCard';
 export { default as VacuumCard } from './VacuumCard';
 export { default as WeatherGraph } from './WeatherGraph';
 export { default as WeatherTempCard } from './WeatherTempCard';

@@ -77,8 +77,10 @@ export default function ConfigModal({
   setLanguage,
   inactivityTimeout,
   setInactivityTimeout,
-  gridGap,
-  setGridGap,
+  gridGapH,
+  setGridGapH,
+  gridGapV,
+  setGridGapV,
   gridColumns,
   setGridColumns,
   cardBorderRadius,
@@ -130,8 +132,9 @@ export default function ConfigModal({
 
   const TABS = [
     { key: 'connection', icon: Wifi, label: t('system.tabConnection') },
-    { key: 'appearance', icon: Palette, label: t('system.tabAppearance') },
-    { key: 'layout', icon: LayoutGrid, label: t('system.tabLayout') },
+    // Appearance and Layout have been moved to Sidebars
+    // { key: 'appearance', icon: Palette, label: t('system.tabAppearance') },
+    // { key: 'layout', icon: LayoutGrid, label: t('system.tabLayout') },
     { key: 'updates', icon: Download, label: t('updates.title') },
   ];
 
@@ -526,23 +529,48 @@ export default function ConfigModal({
             </div>
           </div>
 
-          {/* Gap */}
+          {/* Grid Spacing */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[12px] font-medium text-[var(--text-primary)]">{t('settings.gridGap')}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] tabular-nums text-[var(--text-muted)]">{gridGap}px</span>
-                {gridGap !== 20 && <ResetButton onClick={() => setGridGap(20)} />}
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[12px] font-medium text-[var(--text-primary)]">{t('settings.gridGap') || 'Grid Spacing'}</span>
+              {(gridGapH !== 20 || gridGapV !== 20) && (
+                 <ResetButton onClick={() => { setGridGapH(20); setGridGapV(20); }} />
+              )}
             </div>
-            <M3Slider
-              min={0}
-              max={64}
-              step={4}
-              value={gridGap}
-              onChange={(e) => setGridGap(parseInt(e.target.value, 10))}
-              colorClass="bg-blue-500"
-            />
+            
+            <div className="space-y-5 pl-3 border-l-2 border-[var(--glass-border)] ml-1">
+                {/* Horizontal */}
+                <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <span className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-wider">{t('settings.gridGapH') || 'Vannrett'}</span>
+                     <span className="text-[11px] tabular-nums text-[var(--text-muted)] font-mono">{gridGapH}px</span>
+                   </div>
+                   <M3Slider
+                      min={0}
+                      max={64}
+                      step={4}
+                      value={gridGapH}
+                      onChange={(e) => setGridGapH(parseInt(e.target.value, 10))}
+                      colorClass="bg-blue-500"
+                    />
+                </div>
+
+                {/* Vertical */}
+                <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <span className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-wider">{t('settings.gridGapV') || 'Loddrett'}</span>
+                     <span className="text-[11px] tabular-nums text-[var(--text-muted)] font-mono">{gridGapV}px</span>
+                   </div>
+                   <M3Slider
+                      min={0}
+                      max={64}
+                      step={4}
+                      value={gridGapV}
+                      onChange={(e) => setGridGapV(parseInt(e.target.value, 10))}
+                      colorClass="bg-blue-500"
+                    />
+                </div>
+            </div>
           </div>
         </Section>
 
@@ -1080,8 +1108,8 @@ export default function ConfigModal({
                 )}
 
                 {configTab === 'connection' && renderConnectionTab()}
-                {configTab === 'appearance' && renderAppearanceTab()}
-                {configTab === 'layout' && renderLayoutTab()}
+                {/* {configTab === 'appearance' && renderAppearanceTab()} */}
+                {/* {configTab === 'layout' && renderLayoutTab()} */}
                 {configTab === 'updates' && renderUpdatesTab()}
               </div>
 

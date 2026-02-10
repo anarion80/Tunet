@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0-beta.5] — 2026-02-10
+
+### Added
+- **Sidebars**: New Theme, Layout, and Header sidebars with compact tab switching
+- **Settings Menu**: Compact settings dropdown with quick access to sidebars
+- **Todo**: Todo card type, todo modal, and Home Assistant todo helpers
+- **Page Reorder**: Drag-and-drop page ordering in edit mode
+
+### Changed
+- **Header Editor**: Moved from modal to sidebar for live preview
+- **Grid Spacing**: Split grid gap into horizontal and vertical controls
+- **Slider Accent**: Default slider accent now follows theme accent color
+- **Translations**: Added missing i18n keys for new controls
+
+### Fixed
+- **Nynorsk Labels**: Ensured header/layout tab labels fall back correctly
+
 ## [1.0.0-beta.4] — 2026-02-08
 
 ### Added

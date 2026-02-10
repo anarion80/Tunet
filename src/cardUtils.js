@@ -29,6 +29,7 @@ export function isCardRemovable(cardId, pageId, { getCardSettingsKey, cardSettin
   if (cardId.startsWith('androidtv_card_')) return true;
   if (cardId.startsWith('car_card_')) return true;
   if (cardId.startsWith('nordpool_card_')) return true;
+  if (cardId.startsWith('todo_card_')) return true;
   return false;
 }
 
@@ -60,7 +61,8 @@ export function isCardHiddenByLogic(cardId, { activePage, getCardSettingsKey, ca
     cardId.startsWith('cost_card_') || 
     cardId.startsWith('androidtv_card_') || 
     cardId.startsWith('car_card_') ||
-    cardId.startsWith('nordpool_card_');
+    cardId.startsWith('nordpool_card_') ||
+    cardId.startsWith('todo_card_');
 
   if (!isSpecialCard && !entities[cardId]) {
      if (cardId.startsWith('light_') || cardId.startsWith('light.')) return false;

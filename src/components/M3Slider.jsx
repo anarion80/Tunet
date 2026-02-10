@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 
 export default function M3Slider({ 
   min, max, step, value, onChange, 
-  colorClass = "bg-blue-500", 
+  colorClass: propColorClass = "bg-blue-500", 
   disabled = false, 
   variant = "default",
   trackClass,
   thumbClass,
   height
 }) {
+  const colorClass = propColorClass === "bg-blue-500" ? "bg-[var(--accent-color)]" : propColorClass;
   const [internalValue, setInternalValue] = useState(value);
   const [isInteracting, setIsInteracting] = useState(false);
   const timeoutRef = useRef(null);

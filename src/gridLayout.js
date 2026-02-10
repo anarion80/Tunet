@@ -29,6 +29,12 @@ export const getCardGridSpan = (cardId, getCardSettingsKey, cardSettings, active
     return sizeSetting === 'small' ? 1 : (sizeSetting === 'medium' ? 2 : 4);
   }
 
+  if (cardId.startsWith('todo_card_')) {
+    const settingsKey = getCardSettingsKey(cardId);
+    const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
+    return sizeSetting === 'small' ? 1 : (sizeSetting === 'medium' ? 2 : 4);
+  }
+
   if (cardId.startsWith('light_') || cardId.startsWith('light.')) {
     const settingsKey = getCardSettingsKey(cardId);
     const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;

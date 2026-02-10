@@ -47,7 +47,8 @@ export const PageProvider = ({ children }) => {
   const [hiddenCards, setHiddenCards] = useState([]);
   const [pageSettings, setPageSettings] = useState({});
   const [gridColumns, setGridColumns] = useState(3);
-  const [gridGap, setGridGap] = useState(20);
+  const [gridGapH, setGridGapH] = useState(20);
+  const [gridGapV, setGridGapV] = useState(20);
   const [cardBorderRadius, setCardBorderRadius] = useState(16);
   const [headerScale, setHeaderScale] = useState(1);
   const [sectionSpacing, setSectionSpacing] = useState(DEFAULT_SECTION_SPACING);
@@ -136,7 +137,14 @@ export const PageProvider = ({ children }) => {
     if (savedCols !== null) setGridColumns(savedCols);
 
     const savedGap = readNumber('tunet_grid_gap', null);
-    if (savedGap !== null) setGridGap(savedGap);
+    const savedGapH = readNumber('tunet_grid_gap_h', null);
+    const savedGapV = readNumber('tunet_grid_gap_v', null);
+
+    if (savedGapH !== null) setGridGapH(savedGapH);
+    else if (savedGap !== null) setGridGapH(savedGap);
+
+    if (savedGapV !== null) setGridGapV(savedGapV);
+    else if (savedGap !== null) setGridGapV(savedGap);
 
     const savedRadius = readNumber('tunet_card_border_radius', null);
     if (savedRadius !== null) setCardBorderRadius(savedRadius);
@@ -303,13 +311,22 @@ export const PageProvider = ({ children }) => {
       setCardSettings(newSettings);
       writeJSON('tunet_card_settings', newSettings);
     },
-    gridGap,
-    setGridGap: (val) => {
-      setGridGap(val);
+    gridGapH,
+    setGridGapH: (val) => {
+      setGridGapH(val);
       try {
-        localStorage.setItem('tunet_grid_gap', String(val));
+        localStorage.setItem('tunet_grid_gap_h', String(val));
       } catch (error) {
-        console.error('Failed to save grid gap:', error);
+        console.error('Failed to save grid gap h:', error);
+      }
+    },
+    gridGapV,
+    setGridGapV: (val) => {
+      setGridGapV(val);
+      try {
+        localStorage.setItem('tunet_grid_gap_v', String(val));
+      } catch (error) {
+        console.error('Failed to save grid gap v:', error);
       }
     },
     statusPillsConfig,

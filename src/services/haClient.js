@@ -173,3 +173,92 @@ export async function getCalendarEvents(conn, { start, end, entityIds }) {
 
   return normalized;
 }
+
+// ─── Todo helpers ─────────────────────────────────────────────
+
+export async function getTodoItems(conn, entityId) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+
+  // Try the dedicated WebSocket command first (preferred for frontends)
+  try {
+    console.log('[haClient] Trying todo/item/list for', entityId);
+    const res = await conn.sendMessagePromise({
+      type: 'todo/item/list',
+      entity_id: entityId,
+    });
+    console.log('[haClient] todo/item/list result:', res);
+    if (res && Array.isArray(res.items)) {
+      return res.items;
+    }
+  } catch (err) {
+    // If todo/item/list is not available or fails, fall back to service call
+    console.debug('[haClient] todo/item/list failed, using fallback:', err);
+  }
+
+  const res = await conn.sendMessagePromise({
+    type: 'call_service',
+    domain: 'todo',
+    service: 'get_items',
+    target: { entity_id: entityId },
+    service_data: { status: ['needs_action', 'completed'] },
+    return_response: true,
+  });
+  console.log('[haClient] getTodoItems response:', res);
+
+
+  // HA can wrap the response in several layers
+  const extract = (obj) => {
+    if (!obj || typeof obj !== 'object') return [];
+    if (Array.isArray(obj.items)) return obj.items;
+    const inner = obj[entityId] || obj.response?.[entityId] || obj.service_response?.[entityId];
+    if (inner && Array.isArray(inner.items)) return inner.items;
+    // Walk first level
+    for (const val of Object.values(obj)) {
+      if (val && Array.isArray(val.items)) return val.items;
+    }
+    return [];
+  };
+
+  return extract(res?.service_response) || extract(res?.response) || extract(res?.result) || extract(res) || [];
+}
+
+export async function addTodoItem(conn, entityId, summary) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+  return conn.sendMessagePromise({
+    type: 'call_service',
+    domain: 'todo',
+    service: 'add_item',
+    target: { entity_id: entityId },
+    service_data: { item: summary },
+  });
+}
+
+export async function updateTodoItem(conn, entityId, uid, status) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+  return conn.sendMessagePromise({
+    type: 'call_service',
+    domain: 'todo',
+    service: 'update_item',
+    target: { entity_id: entityId },
+    service_data: { item: uid, status },
+  });
+}
+
+export async function removeTodoItem(conn, entityId, uid) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+  return conn.sendMessagePromise({
+    type: 'call_service',
+    domain: 'todo',
+    service: 'remove_item',
+    target: { entity_id: entityId },
+    service_data: { item: uid },
+  });
+}

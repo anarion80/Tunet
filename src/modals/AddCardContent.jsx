@@ -8,6 +8,7 @@ import {
   Coins,
   Gamepad2,
   Lightbulb,
+  ListChecks,
   Music,
   Plus,
   Search,
@@ -376,6 +377,7 @@ export default function AddCardContent({
                 <TypeButton type="media" icon={Music} label={t('addCard.type.media')} />
                 <TypeButton type="weather" icon={CloudSun} label={t('addCard.type.weather')} />
                 <TypeButton type="calendar" icon={Calendar} label={t('addCard.type.calendar') || 'Calendar'} />
+                <TypeButton type="todo" icon={ListChecks} label={t('addCard.type.todo') || 'Todo'} />
                 <TypeButton type="nordpool" icon={Zap} label="Nordpool" />
               </div>
             </div>
@@ -385,6 +387,7 @@ export default function AddCardContent({
             {addCardType === 'weather' ? renderWeatherSection()
               : addCardType === 'androidtv' ? renderAndroidTVSection()
               : addCardType === 'calendar' ? renderSimpleAddSection(Calendar, t('addCard.calendarDescription') || 'Add a calendar card. You can select calendars after adding the card.', t('addCard.add'))
+              : addCardType === 'todo' ? renderSimpleAddSection(ListChecks, t('addCard.todoDescription') || 'Add a to-do card. You can select which list to use after adding.', t('addCard.add'))
               : addCardType === 'car' ? renderSimpleAddSection(Car, t('addCard.carDescription'), t('addCard.carCard'))
               : addCardType === 'nordpool' ? renderNordpoolSection()
               : renderGenericEntityList()
