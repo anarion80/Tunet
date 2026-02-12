@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Clock, Calendar, Activity, Info } from 'lucide-react';
+import { logger } from '../utils/logger';
 import { getHistory, getHistoryRest, getStatistics } from '../services/haClient';
 import SensorHistoryGraph from '../components/SensorHistoryGraph';
 import BinaryTimeline from '../components/BinaryTimeline';
@@ -179,7 +180,7 @@ export default function SensorModal({ isOpen, onClose, entityId, entity, customN
                     .filter(d => !isNaN(parseFloat(d.value)));
                 }
              } catch (statErr) {
-               console.warn("Stats fetch failed", statErr);
+              logger.warn('Stats fetch failed', statErr);
              }
           }
 
@@ -318,7 +319,7 @@ export default function SensorModal({ isOpen, onClose, entityId, entity, customN
   let displayState = isNumeric ? parseFloat(state) : formatStateLabel(state, deviceClass);
   // Add prefix for Scene timestamps
   if (domain === 'scene' && String(state).match(/^\d{4}-\d{2}-\d{2}T/)) {
-    displayState = `Satt ${formatRelativeTime(state, t)}`;
+    displayState = `${t('state.sceneSet')} ${formatRelativeTime(state, t)}`;
   }
 
   const recentEvents = historyEvents
@@ -407,7 +408,7 @@ export default function SensorModal({ isOpen, onClose, entityId, entity, customN
                            <BinaryTimeline events={historyEvents} startTime={timeWindow.start} endTime={timeWindow.end} />
                         </div>
                         
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-80 mb-4 bg-transparent shadow-sm pb-2 border-b border-[var(--glass-border)]">Logg</h4>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-80 mb-4 bg-transparent shadow-sm pb-2 border-b border-[var(--glass-border)]">{t('history.log')}</h4>
                         <div className="space-y-1 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                             {recentEvents.length === 0 && (
                                 <div className="text-sm text-[var(--text-secondary)] italic opacity-60 py-8 text-center">{t('sensorInfo.noHistory')}</div>
@@ -418,7 +419,7 @@ export default function SensorModal({ isOpen, onClose, entityId, entity, customN
                                 
                                 // Specific formatting for Scenes in log
                                 if (domain === 'scene' && String(event.state).match(/^\d{4}-\d{2}-\d{2}T/)) {
-                                  stateLabel = `Satt ${formatRelativeTime(event.state, t)}`;
+                                  stateLabel = `${t('state.sceneSet')} ${formatRelativeTime(event.state, t)}`;
                                 }
 
                                 const useStateOnly = (domain === 'binary_sensor' || domain === 'motion') && (deviceClass === 'motion' || deviceClass === 'occupancy' || deviceClass === 'presence');
@@ -459,7 +460,7 @@ export default function SensorModal({ isOpen, onClose, entityId, entity, customN
            
            {/* Timestamps */}
            <div>
-               <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] mb-6 opacity-40">Tidslinje</h4>
+               <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] mb-6 opacity-40">{t('sensorInfo.timeline')}</h4>
                <div className="space-y-6">
                   <div className="relative pl-4 border-l border-[var(--glass-border)]">
                       <div className="absolute -left-[3px] top-1.5 w-1.5 h-1.5 rounded-full bg-blue-400"></div>

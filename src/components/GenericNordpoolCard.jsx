@@ -109,7 +109,7 @@ export default function GenericNordpoolCard({
           e.stopPropagation();
           if (!editMode && onOpen) onOpen();
         }}
-        className={`touch-feedback p-4 pl-5 rounded-3xl flex items-center justify-between gap-4 transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`}
+        className={`touch-feedback p-4 pl-5 rounded-3xl flex items-center justify-between gap-4 transition-colors duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`}
         style={cardStyle}
       >
         {controls}
@@ -128,7 +128,7 @@ export default function GenericNordpoolCard({
           </div>
         </div>
 
-        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all ${pillClass}`}>
+        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-colors duration-500 ${pillClass}`}>
             <span className="text-[10px] font-bold uppercase tracking-widest">{levelText}</span>
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function GenericNordpoolCard({
         e.stopPropagation();
         if (!editMode && onOpen) onOpen();
       }}
-      className={`touch-feedback p-7 rounded-3xl flex flex-col justify-between transition-all duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`}
+      className={`touch-feedback p-7 rounded-3xl flex flex-col justify-between transition-colors duration-500 border group relative overflow-hidden font-sans h-full ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'}`}
       style={cardStyle}
     >
       {controls}

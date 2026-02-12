@@ -183,18 +183,15 @@ export async function getTodoItems(conn, entityId) {
 
   // Try the dedicated WebSocket command first (preferred for frontends)
   try {
-    console.log('[haClient] Trying todo/item/list for', entityId);
     const res = await conn.sendMessagePromise({
       type: 'todo/item/list',
       entity_id: entityId,
     });
-    console.log('[haClient] todo/item/list result:', res);
     if (res && Array.isArray(res.items)) {
       return res.items;
     }
   } catch (err) {
     // If todo/item/list is not available or fails, fall back to service call
-    console.debug('[haClient] todo/item/list failed, using fallback:', err);
   }
 
   const res = await conn.sendMessagePromise({
@@ -205,7 +202,6 @@ export async function getTodoItems(conn, entityId) {
     service_data: { status: ['needs_action', 'completed'] },
     return_response: true,
   });
-  console.log('[haClient] getTodoItems response:', res);
 
 
   // HA can wrap the response in several layers
@@ -261,4 +257,54 @@ export async function removeTodoItem(conn, entityId, uid) {
     target: { entity_id: entityId },
     service_data: { item: uid },
   });
+}
+
+// ─── Area / Room registry helpers ─────────────────────────────
+
+export async function getAreas(conn) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+  const res = await conn.sendMessagePromise({ type: 'config/area_registry/list' });
+  return Array.isArray(res) ? res : (res?.result || []);
+}
+
+export async function getDeviceRegistry(conn) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+  const res = await conn.sendMessagePromise({ type: 'config/device_registry/list' });
+  return Array.isArray(res) ? res : (res?.result || []);
+}
+
+export async function getEntityRegistry(conn) {
+  if (!conn || typeof conn.sendMessagePromise !== 'function') {
+    throw new Error('Invalid or disconnected HA connection');
+  }
+  const res = await conn.sendMessagePromise({ type: 'config/entity_registry/list' });
+  return Array.isArray(res) ? res : (res?.result || []);
+}
+
+/**
+ * Get all entity IDs that belong to a given area.
+ * Resolves via entity registry (direct area_id) and device registry (device -> area).
+ */
+export async function getEntitiesForArea(conn, areaId) {
+  const [entityReg, deviceReg] = await Promise.all([
+    getEntityRegistry(conn),
+    getDeviceRegistry(conn),
+  ]);
+
+  // Devices in the area
+  const deviceIds = new Set(
+    deviceReg.filter(d => d.area_id === areaId).map(d => d.id)
+  );
+
+  // Entities directly in area OR belonging to a device in the area
+  const entityIds = entityReg
+    .filter(e => e.area_id === areaId || (e.device_id && deviceIds.has(e.device_id)))
+    .filter(e => !e.disabled_by && !e.hidden_by)
+    .map(e => e.entity_id);
+
+  return entityIds;
 }

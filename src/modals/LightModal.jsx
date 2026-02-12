@@ -180,7 +180,7 @@ export default function LightModal({
                         ${activeTab === 'brightness' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)]'}`}
                     >
                       <Sun className="w-3.5 h-3.5" />
-                      <span>Lysstyrke</span>
+                      <span>{t('light.brightness')}</span>
                     </button>
                     {supportsColorTemp && (
                       <button 
@@ -189,7 +189,7 @@ export default function LightModal({
                           ${activeTab === 'warmth' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)]'}`}
                       >
                         <Thermometer className="w-3.5 h-3.5" />
-                        <span>Varme</span>
+                        <span>{t('light.warmth')}</span>
                       </button>
                     )}
                     {supportsColor && (
@@ -199,7 +199,7 @@ export default function LightModal({
                           ${activeTab === 'color' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)]'}`}
                       >
                         <Palette className="w-3.5 h-3.5" />
-                        <span>Farge</span>
+                        <span>{t('light.color')}</span>
                       </button>
                     )}
                  </div>
@@ -217,7 +217,7 @@ export default function LightModal({
                    {activeTab === 'brightness' && (
                      <div className="space-y-2 md:space-y-4">
                         <div className="flex justify-between items-end px-1">
-                          <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">Lysstyrke</label>
+                          <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">{t('light.brightness')}</label>
                           <span className="text-lg font-medium text-[var(--text-primary)] font-mono">
                             {Math.round((((optimisticLightBrightness[lightId] ?? (getA(lightId, "brightness") || 0)) / 255) * 100))}%
                           </span>
@@ -282,7 +282,7 @@ export default function LightModal({
                    {activeTab === 'color' && (
                      <div className="space-y-2 md:space-y-4">
                         <div className="flex justify-between items-end px-1">
-                           <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">Fargetone</label>
+                           <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">{t('light.hue')}</label>
                            {/* Color Preview Dot */}
                            <div className="w-6 h-6 rounded-full border border-[var(--glass-border)] shadow-sm" style={{ backgroundColor: `hsl(${localHue}, 100%, 50%)` }} />
                         </div>

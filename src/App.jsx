@@ -50,6 +50,7 @@ const PersonModal = lazy(() => import('./modals/PersonModal'));
 const SensorModal = lazy(() => import('./modals/SensorModal'));
 const StatusPillsConfigModal = lazy(() => import('./modals/StatusPillsConfigModal'));
 const TodoModal = lazy(() => import('./modals/TodoModal'));
+const RoomModal = lazy(() => import('./modals/RoomModal'));
 const VacuumModal = lazy(() => import('./modals/VacuumModal'));
 
 // Sidebars
@@ -77,6 +78,7 @@ import {
   ModalSuspense,
   PageNavigation,
   PersonStatus,
+  RoomCard,
   SensorCard,
   VacuumCard,
   WeatherTempCard,
@@ -94,6 +96,7 @@ import {
 import { useModals, useSmartTheme, useTempHistory } from './hooks';
 import { themes } from './themes';
 import { formatDuration, isToggleEntity } from './utils';
+import { logger } from './utils/logger';
 import './dashboard.css';
 import { getIconComponent } from './iconMap';
 import { buildOnboardingSteps, validateUrl } from './onboarding';
@@ -211,6 +214,8 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     setShowCalendarModal,
     showTodoModal,
     setShowTodoModal,
+    showRoomModal,
+    setShowRoomModal,
     showWeatherModal,
     setShowWeatherModal,
     activeMediaModal,
@@ -460,7 +465,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   };
   const callService = (domain, service, data) => { 
     if (!conn) {
-      console.warn(`Service call attempted while disconnected: ${domain}.${service}`);
+      logger.warn(`Service call attempted while disconnected: ${domain}.${service}`);
       return Promise.reject(new Error('No connection'));
     }
     return haCallService(conn, domain, service, data).catch(error => {
@@ -1249,6 +1254,34 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
       );
     }
 
+    if (cardId.startsWith('room_card_')) {
+      const roomSettings = cardSettings[settingsKey] || cardSettings[cardId] || {};
+      return (
+        <RoomCard
+          cardId={cardId}
+          settings={roomSettings}
+          entities={entities}
+          conn={conn}
+          callService={(domain, service, data) => callService(domain, service, data)}
+          dragProps={dragProps}
+          controls={getControls(cardId)}
+          cardStyle={cardStyle}
+          editMode={editMode}
+          customNames={customNames}
+          customIcons={customIcons}
+          onOpen={() => {
+            if (editMode) {
+              setShowEditCardModal(cardId);
+              setEditCardSettingsKey(settingsKey);
+            } else {
+              setShowRoomModal(cardId);
+            }
+          }}
+          t={t}
+        />
+      );
+    }
+
     const genericSettings = cardSettings[settingsKey] || cardSettings[cardId] || {};
     if (genericSettings.type === 'sensor' || genericSettings.type === 'entity' || genericSettings.type === 'toggle') {
       return renderSensorCard(cardId, dragProps, getControls, cardStyle, settingsKey);
@@ -1292,12 +1325,13 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   const isEditVacuum = !!editId && editId.startsWith('vacuum.');
   const isEditAutomation = !!editId && editId.startsWith('automation.');
   const isEditCar = !!editId && (editId === 'car' || editId.startsWith('car_card_'));
+  const isEditRoom = !!editId && editId.startsWith('room_card_');
   const editSettings = isEditCar ? resolveCarSettings(editId, rawEditSettings) : rawEditSettings;
-  const isEditGenericType = (!!editSettings?.type && (editSettings.type === 'entity' || editSettings.type === 'toggle' || editSettings.type === 'sensor')) || isEditVacuum || isEditAutomation || isEditCar || isEditAndroidTV;
+  const isEditGenericType = (!!editSettings?.type && (editSettings.type === 'entity' || editSettings.type === 'toggle' || editSettings.type === 'sensor')) || isEditVacuum || isEditAutomation || isEditCar || isEditAndroidTV || isEditRoom;
   const isEditSensor = !!editSettings?.type && editSettings.type === 'sensor';
   const isEditWeatherTemp = !!editId && editId.startsWith('weather_temp_');
   const canEditName = !!editId && !isEditWeatherTemp && editId !== 'media_player' && editId !== 'sonos';
-  const canEditIcon = !!editId && (isEditLight || isEditCalendar || isEditTodo || editId.startsWith('automation.') || editId.startsWith('vacuum.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || !!editEntity || editId === 'car' || editId.startsWith('car_card_'));
+  const canEditIcon = !!editId && (isEditLight || isEditCalendar || isEditTodo || isEditRoom || editId.startsWith('automation.') || editId.startsWith('vacuum.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || !!editEntity || editId === 'car' || editId.startsWith('car_card_'));
   const canEditStatus = !!editEntity && !!editSettingsKey && editSettingsKey.startsWith('settings::');
   const isOnboardingActive = showOnboarding;
   const onboardingSteps = buildOnboardingSteps(t);
@@ -1844,6 +1878,33 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
               nordpoolDecimals={nordpoolDecimals}
               setNordpoolDecimals={setNordpoolDecimals}
               onAddSelected={onAddSelected}
+              onAddRoom={(area, areaEntityIds) => {
+                const cardId = `room_card_${Date.now()}`;
+                const newConfig = { ...pagesConfig };
+                newConfig[addCardTargetPage] = [...(newConfig[addCardTargetPage] || []), cardId];
+                persistConfig(newConfig);
+                const settingsKey = getCardSettingsKey(cardId, addCardTargetPage);
+                const newSettings = {
+                  ...cardSettings,
+                  [settingsKey]: {
+                    areaId: area.area_id,
+                    areaName: area.name || area.area_id,
+                    entityIds: areaEntityIds,
+                    showLights: true,
+                    showTemp: true,
+                    showMotion: true,
+                    showHumidity: false,
+                    showClimate: false,
+                    size: 'large',
+                  }
+                };
+                persistCardSettings(newSettings);
+                saveCustomName(cardId, area.name || area.area_id);
+                setShowAddCardModal(false);
+                setShowEditCardModal(cardId);
+                setEditCardSettingsKey(settingsKey);
+              }}
+              conn={conn}
               getAddCardAvailableLabel={getAddCardAvailableLabel}
               getAddCardNoneLeftLabel={getAddCardNoneLeftLabel}
               t={t}
@@ -1900,10 +1961,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           isEditGenericType={isEditGenericType}
           isEditAndroidTV={isEditAndroidTV}
           isEditCar={isEditCar}
+          isEditRoom={isEditRoom}
           isEditSensor={isEditSensor}
           isEditWeatherTemp={isEditWeatherTemp}
           editSettingsKey={editSettingsKey}
           editSettings={editSettings}
+          conn={conn}
           customNames={customNames}
           saveCustomName={saveCustomName}
           customIcons={customIcons}
@@ -2015,6 +2078,24 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
                 conn={conn}
                 entities={entities}
                 settings={todoSettings}
+                t={t}
+              />
+            </ModalSuspense>
+          );
+        })()}
+
+        {showRoomModal && (() => {
+          const roomSettingsKey = getCardSettingsKey(showRoomModal);
+          const roomSettings = cardSettings[roomSettingsKey] || cardSettings[showRoomModal] || {};
+          return (
+            <ModalSuspense>
+              <RoomModal
+                show={true}
+                onClose={() => setShowRoomModal(null)}
+                settings={roomSettings}
+                entities={entities}
+                conn={conn}
+                callService={(domain, service, data) => callService(domain, service, data)}
                 t={t}
               />
             </ModalSuspense>

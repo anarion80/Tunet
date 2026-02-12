@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, Check, Plus } from 'lucide-react';
+import { X, Check, Plus, RefreshCw } from 'lucide-react';
 import M3Slider from '../components/M3Slider';
 import IconPicker from '../components/IconPicker';
+import { getAreas, getEntitiesForArea } from '../services/haClient';
 
 function SearchableSelect({ label, value, options, onChange, placeholder, entities, t }) {
   const [open, setOpen] = React.useState(false);
@@ -95,10 +96,12 @@ export default function EditCardModal({
   isEditTodo,
   isEditCost,
   isEditCar,
+  isEditRoom,
   isEditAndroidTV,
   editSettingsKey,
   editSettings,
   isEditWeatherTemp,
+  conn,
   customNames,
   saveCustomName,
   customIcons,
@@ -243,9 +246,9 @@ export default function EditCardModal({
 
           {isEditWeatherTemp && editSettingsKey && (
             <div className="space-y-2">
-              <label className="text-xs uppercase font-bold text-gray-500 ml-4 pb-1 block">Weather Effects</label>
+              <label className="text-xs uppercase font-bold text-gray-500 ml-4 pb-1 block">{t('weatherTemp.effects')}</label>
               <div className="popup-surface rounded-2xl p-4 flex items-center justify-between">
-                <span className="text-sm font-medium text-[var(--text-primary)]">Show effects animation</span>
+                <span className="text-sm font-medium text-[var(--text-primary)]">{t('weatherTemp.showEffects')}</span>
                 <button
                   onClick={() => saveCardSetting(editSettingsKey, 'showEffects', editSettings.showEffects === false ? true : false)}
                   className={`w-12 h-6 rounded-full transition-colors relative ${editSettings.showEffects !== false ? 'bg-blue-500' : 'bg-gray-600'}`}
@@ -429,7 +432,7 @@ export default function EditCardModal({
 
               <input 
                 type="text" 
-                placeholder="Search media players..." 
+                placeholder={t('androidtv.searchPlayers')} 
                 value={mediaSearch} 
                 onChange={(e) => setMediaSearch(e.target.value)} 
                 className="w-full px-3 py-2 rounded-xl popup-surface text-sm focus:border-blue-500/50 outline-none mb-2 text-[var(--text-primary)]"
@@ -705,8 +708,8 @@ export default function EditCardModal({
                   {canControl && (
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                        <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">Controls</span>
-                        <span className="text-[10px] text-gray-500">Enable +/- or Toggle</span>
+                        <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">{t('form.showControls')}</span>
+                        <span className="text-[10px] text-gray-500">{t('form.controlsHint')}</span>
                         </div>
                         <button 
                         onClick={() => editSettingsKey && saveCardSetting(editSettingsKey, 'showControls', !editSettings.showControls)}
@@ -720,8 +723,8 @@ export default function EditCardModal({
                   {canGraph && (
                     <div className="flex items-center justify-between">
                     <div className="flex flex-col">
-                        <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">Graph</span>
-                        <span className="text-[10px] text-gray-500">Show history graph</span>
+                        <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">{t('form.showGraph')}</span>
+                        <span className="text-[10px] text-gray-500">{t('form.graphHint')}</span>
                     </div>
                     <button 
                         onClick={() => editSettingsKey && saveCardSetting(editSettingsKey, 'showGraph', !(editSettings.showGraph !== false))}
@@ -733,6 +736,122 @@ export default function EditCardModal({
                   )}
               </div>
              );
+          })()}
+
+          {isEditRoom && editSettingsKey && (() => {
+            const [refreshing, setRefreshing] = React.useState(false);
+
+            const roomEntityIds = Array.isArray(editSettings.entityIds) ? editSettings.entityIds : [];
+
+            const handleRefresh = async () => {
+              if (!conn || !editSettings.areaId) return;
+              setRefreshing(true);
+              try {
+                const newEntities = await getEntitiesForArea(conn, editSettings.areaId);
+                saveCardSetting(editSettingsKey, 'entityIds', newEntities);
+              } catch (err) {
+                console.error('Failed to refresh room entities:', err);
+              }
+              setRefreshing(false);
+            };
+
+            const toggleOptions = [
+              { key: 'showLights', label: t('room.showLights'), defaultVal: true },
+              { key: 'showTemp', label: t('room.showTemp'), defaultVal: true },
+              { key: 'showMotion', label: t('room.showMotion'), defaultVal: true },
+              { key: 'showHumidity', label: t('room.showHumidity'), defaultVal: false },
+              { key: 'showClimate', label: t('room.showClimate'), defaultVal: false },
+            ];
+
+            const sensorOptions = [
+              { key: 'tempEntityId', label: t('room.tempSensor'), filter: (id) => {
+                const e = entities[id];
+                return e && (e.attributes?.device_class === 'temperature' || id.includes('temperature') || id.includes('temp'));
+              }},
+              { key: 'motionEntityId', label: t('room.motionSensor'), filter: (id) => {
+                const e = entities[id];
+                return e && (e.attributes?.device_class === 'motion' || e.attributes?.device_class === 'occupancy');
+              }},
+              { key: 'humidityEntityId', label: t('room.humiditySensor'), filter: (id) => {
+                const e = entities[id];
+                return e && e.attributes?.device_class === 'humidity';
+              }},
+              { key: 'climateEntityId', label: t('room.climateSensor'), filter: (id) => id.startsWith('climate.') },
+              { key: 'mainLightEntityId', label: t('room.mainLight'), filter: (id) => id.startsWith('light.') },
+            ];
+
+            return (
+              <div className="space-y-5">
+                {/* Refresh entities from HA */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                    {roomEntityIds.length} {t('room.entityCount')}
+                  </span>
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing || !conn}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                    {t('room.refreshEntities')}
+                  </button>
+                </div>
+
+                {/* Badge toggles */}
+                <div className="popup-surface rounded-2xl p-4 space-y-4">
+                  {toggleOptions.map(opt => {
+                    const value = editSettings[opt.key] !== undefined ? editSettings[opt.key] : opt.defaultVal;
+                    return (
+                      <div key={opt.key} className="flex items-center justify-between">
+                        <span className="text-xs uppercase font-bold text-gray-500 tracking-widest">{opt.label}</span>
+                        <button
+                          onClick={() => saveCardSetting(editSettingsKey, opt.key, !value)}
+                          className={`w-12 h-6 rounded-full transition-colors relative ${value ? 'bg-blue-500' : 'bg-[var(--glass-bg-hover)]'}`}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${value ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Specific sensor overrides */}
+                <div className="space-y-3">
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500 ml-1">
+                    {t('room.tempSensor')} / {t('room.motionSensor')}
+                  </span>
+                  {sensorOptions.map(opt => {
+                    const matching = roomEntityIds.filter(opt.filter);
+                    if (matching.length === 0) return null;
+                    return (
+                      <div key={opt.key}>
+                        <label className="text-[10px] uppercase font-bold text-gray-500 ml-4 block mb-1">{opt.label}</label>
+                        <div className="popup-surface rounded-2xl p-3 max-h-32 overflow-y-auto custom-scrollbar space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => saveCardSetting(editSettingsKey, opt.key, null)}
+                            className={`w-full text-left px-3 py-2 rounded-xl transition-colors text-xs font-bold uppercase tracking-widest ${!editSettings[opt.key] ? 'text-blue-400' : 'text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
+                          >
+                            Auto
+                          </button>
+                          {matching.map(id => (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => saveCardSetting(editSettingsKey, opt.key, id)}
+                              className={`w-full text-left px-3 py-2 rounded-xl transition-colors ${editSettings[opt.key] === id ? 'text-blue-400' : 'text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
+                            >
+                              <div className="text-xs font-bold truncate">{entities[id]?.attributes?.friendly_name || id}</div>
+                              <div className="text-[10px] text-[var(--text-muted)] truncate">{id}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
           })()}
 
           {isEditCost && (

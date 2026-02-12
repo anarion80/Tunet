@@ -36,10 +36,10 @@ export const ConfigProvider = ({ children }) => {
 
   const [language, setLanguage] = useState(() => {
     try {
-      return localStorage.getItem('tunet_language') || 'nn';
+      return localStorage.getItem('tunet_language') || 'en';
     } catch (error) {
       console.error('Failed to read language from localStorage:', error);
-      return 'nn';
+      return 'en';
     }
   });
 

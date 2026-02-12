@@ -76,17 +76,13 @@ function TodoCard({
   }, []);
 
   const fetchItems = useCallback(async () => {
-    console.log('[TodoCard] fetchItems called, entityId:', todoEntityId);
     if (!conn || !todoEntityId) {
-        console.log('[TodoCard] Missing conn or todoEntityId');
         return;
     }
     setLoading(true);
     setError(null);
     try {
-      console.log('[TodoCard] Calling getTodoItems...');
       const result = await getTodoItems(conn, todoEntityId);
-      console.log('[TodoCard] getTodoItems result:', result);
       setItems(result || []);
     } catch (err) {
       console.error('[TodoCard] Failed to fetch todo items:', err);

@@ -98,7 +98,7 @@ export default function NordpoolModal({
               className={`h-9 px-4 rounded-full border transition-all flex items-center gap-2 backdrop-blur-md shadow-lg ${showWithSupport ? 'bg-green-500/20 border-green-500/30 text-green-400 hover:bg-green-500/30' : 'bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
                {showWithSupport ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-               <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">{showWithSupport ? 'Med støtte' : 'Utan støtte'}</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">{showWithSupport ? t('nordpool.withSupport') : t('nordpool.withoutSupport')}</span>
             </button>
             <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
         </div>

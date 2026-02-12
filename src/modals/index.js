@@ -11,6 +11,7 @@ export { default as LightModal } from './LightModal';
 export { default as MediaModal } from './MediaModal';
 export { default as NordpoolModal } from './NordpoolModal';
 export { default as PersonModal } from './PersonModal';
+export { default as RoomModal } from './RoomModal';
 export { default as SensorModal } from './SensorModal';
 export { default as StatusPillsConfigModal } from './StatusPillsConfigModal';
 export { default as TodoModal } from './TodoModal';

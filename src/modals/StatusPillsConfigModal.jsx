@@ -152,7 +152,7 @@ export default function StatusPillsConfigModal({
         {/* Header */}
         <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
           <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-widest">
-            Status Pills Konfigurasjon
+            {t('statusPills.title')}
           </h2>
           <button onClick={onClose} className="modal-close">
             <X className="w-4 h-4" />
@@ -176,16 +176,16 @@ export default function StatusPillsConfigModal({
               {showAddMenu && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-[#1e293b] border border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col p-1">
                   <button onClick={() => { addPill('conditional'); setShowAddMenu(false); }} className="text-left px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-gray-200 font-medium transition-colors flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-400" /> Sensor
+                    <Activity className="w-4 h-4 text-blue-400" /> {t('statusPills.typeSensor')}
                   </button>
                   <button onClick={() => { addPill('media_player'); setShowAddMenu(false); }} className="text-left px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-gray-200 font-medium transition-colors flex items-center gap-2">
-                    <Music className="w-4 h-4 text-green-400" /> Media
+                    <Music className="w-4 h-4 text-green-400" /> {t('statusPills.typeMedia')}
                   </button>
                   <button onClick={() => { addPill('emby'); setShowAddMenu(false); }} className="text-left px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-gray-200 font-medium transition-colors flex items-center gap-2">
-                    <Clapperboard className="w-4 h-4 text-purple-400" /> Emby
+                    <Clapperboard className="w-4 h-4 text-purple-400" /> {t('statusPills.typeEmby')}
                   </button>
                   <button onClick={() => { addPill('sonos'); setShowAddMenu(false); }} className="text-left px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-gray-200 font-medium transition-colors flex items-center gap-2">
-                    <Speaker className="w-4 h-4 text-orange-400" /> Sonos
+                    <Speaker className="w-4 h-4 text-orange-400" /> {t('statusPills.typeSonos')}
                   </button>
                 </div>
               )}
@@ -221,7 +221,7 @@ export default function StatusPillsConfigModal({
                         onClick={() => movePill(pill.id, 'up')}
                         disabled={idx === 0}
                         className="p-3 rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] text-[var(--text-secondary)] disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center"
-                        title="Flytt opp"
+                        title={t('statusPills.moveUp')}
                       >
                         <ChevronUp className="w-5 h-5" />
                       </button>
@@ -229,21 +229,21 @@ export default function StatusPillsConfigModal({
                         onClick={() => movePill(pill.id, 'down')}
                         disabled={idx === pills.length - 1}
                         className="p-3 rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] text-[var(--text-secondary)] disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center"
-                        title="Flytt ned"
+                        title={t('statusPills.moveDown')}
                       >
                         <ChevronDown className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => toggleVisibility(pill.id)}
                         className="p-3 rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] transition-all flex items-center justify-center"
-                        title={pill.visible ? 'Skjul' : 'Vis'}
+                        title={pill.visible ? t('statusPills.hide') : t('statusPills.show')}
                       >
                         {pill.visible ? <Eye className="w-5 h-5 text-emerald-400" /> : <EyeOff className="w-5 h-5 text-gray-500" />}
                       </button>
                       <button
                         onClick={() => deletePill(pill.id)}
                         className="p-3 rounded-xl bg-[var(--glass-bg)] hover:bg-red-500/20 text-red-400 transition-all flex items-center justify-center"
-                        title="Slett"
+                        title={t('statusPills.delete')}
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -273,7 +273,7 @@ export default function StatusPillsConfigModal({
                   <div className="flex items-start justify-between gap-4 border-b border-[var(--glass-border)] pb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{pill.type === 'conditional' ? 'Sensor' : pill.type === 'media_player' ? 'Media' : pill.type === 'emby' ? 'Emby' : 'Sonos'}</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{pill.type === 'conditional' ? t('statusPills.typeSensor') : pill.type === 'media_player' ? t('statusPills.typeMedia') : pill.type === 'emby' ? t('statusPills.typeEmby') : t('statusPills.typeSonos')}</span>
                         {pill.type === 'conditional' && <div className="w-1 h-1 bg-gray-500 rounded-full"></div>}
                         {pill.type === 'conditional' && <span className="text-xs text-gray-500">{t('statusPills.standardPill')}</span>}
                       </div>
@@ -297,10 +297,10 @@ export default function StatusPillsConfigModal({
                           </div>
                           <div className="flex flex-col items-start">
                             <span className={`text-xs uppercase font-bold leading-tight ${pill.labelColor}`}>
-                              {pill.label || 'Label'}
+                              {pill.label || t('statusPills.labelFallback')}
                             </span>
                             <span className={`text-xs font-medium uppercase tracking-widest italic ${pill.sublabelColor}`}>
-                              {pill.sublabel || 'Sublabel'}
+                              {pill.sublabel || t('statusPills.sublabelFallback')}
                             </span>
                           </div>
                         </div>
@@ -314,26 +314,26 @@ export default function StatusPillsConfigModal({
                     {/* Visuals Group (Only for Conditional) */}
                     {pill.type === 'conditional' && (
                       <section className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Utsjånad</h4>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">{t('statusPills.appearance')}</h4>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[10px] uppercase font-bold text-gray-600">Overskrift</label>
+                            <label className="text-[10px] uppercase font-bold text-gray-600">{t('statusPills.heading')}</label>
                             <input
                               type="text"
                               value={pill.label || ''}
                               onChange={(e) => updatePill(pill.id, { label: e.target.value })}
-                              placeholder="Automatisk"
+                              placeholder={t('statusPills.automatic')}
                               className="w-full px-3 py-2 rounded-xl bg-[var(--glass-bg)] text-[var(--text-primary)] outline-none border-0 text-sm"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] uppercase font-bold text-gray-600">Undertittel</label>
+                            <label className="text-[10px] uppercase font-bold text-gray-600">{t('statusPills.subtitle')}</label>
                             <input
                               type="text"
                               value={pill.sublabel || ''}
                               onChange={(e) => updatePill(pill.id, { sublabel: e.target.value })}
-                              placeholder="Automatisk"
+                              placeholder={t('statusPills.automatic')}
                               className="w-full px-3 py-2 rounded-xl bg-[var(--glass-bg)] text-[var(--text-primary)] outline-none border-0 text-sm"
                             />
                           </div>
@@ -341,7 +341,7 @@ export default function StatusPillsConfigModal({
 
                         <div className="flex flex-col sm:flex-row gap-3">
                           <div className="flex-1 space-y-1">
-                            <label className="text-[10px] uppercase font-bold text-gray-600">Ikon</label>
+                            <label className="text-[10px] uppercase font-bold text-gray-600">{t('statusPills.icon')}</label>
                             <div className="relative">
                               <button
                                 onClick={() => setShowIconPicker(!showIconPicker)}
@@ -388,7 +388,7 @@ export default function StatusPillsConfigModal({
                           </div>
                           
                           <div className="flex-1 space-y-1 min-w-0">
-                            <label className="text-[10px] uppercase font-bold text-gray-600">Farge</label>
+                            <label className="text-[10px] uppercase font-bold text-gray-600">{t('statusPills.colorLabel')}</label>
                             <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar items-center h-[38px]">
                               {colorPresets.map(preset => (
                                 <button
@@ -410,7 +410,7 @@ export default function StatusPillsConfigModal({
 
                     {/* Source Logic */}
                     <section className="space-y-3">
-                      <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Datakjelde</h4>
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">{t('statusPills.dataSource')}</h4>
                       
                       {/* Emby Source Type Logic */}
                       {pill.type === 'emby' && (
@@ -703,7 +703,7 @@ export default function StatusPillsConfigModal({
                     
                     {/* Visual Options Group */}
                     <section className="space-y-3">
-                          <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Val</h4>
+                          <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">{t('statusPills.options')}</h4>
                           <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => updatePill(pill.id, { animated: !pill.animated })}
@@ -711,7 +711,7 @@ export default function StatusPillsConfigModal({
                                   pill.animated !== false ? 'bg-purple-500/20 text-purple-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'
                                 }`}
                               >
-                                {pill.animated !== false ? '✓ ' : ''}Animert
+                                {pill.animated !== false ? '✓ ' : ''}{t('statusPills.animated')}
                             </button>
                             <button
                                 onClick={() => updatePill(pill.id, { clickable: !pill.clickable })}
@@ -719,7 +719,7 @@ export default function StatusPillsConfigModal({
                                   pill.clickable ? 'bg-green-500/20 text-green-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'
                                 }`}
                               >
-                                {pill.clickable ? '✓ ' : ''}Klikkbar
+                                {pill.clickable ? '✓ ' : ''}{t('statusPills.clickable')}
                             </button>
                             {(pill.type === 'media_player' || pill.type === 'emby') && (
                               <>
@@ -729,7 +729,7 @@ export default function StatusPillsConfigModal({
                                     pill.showCover !== false ? 'bg-blue-500/20 text-blue-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'
                                   }`}
                                 >
-                                  {pill.showCover !== false ? '✓ ' : ''}Cover
+                                  {pill.showCover !== false ? '✓ ' : ''}{t('statusPills.showCover')}
                                 </button>
                                 <button
                                   onClick={() => updatePill(pill.id, { showCount: !pill.showCount })}
@@ -737,7 +737,7 @@ export default function StatusPillsConfigModal({
                                     pill.showCount ? 'bg-blue-500/20 text-blue-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'
                                   }`}
                                 >
-                                  {pill.showCount ? '✓ ' : ''}Antal
+                                  {pill.showCount ? '✓ ' : ''}{t('statusPills.showCount')}
                                 </button>
                               </>
                             )}

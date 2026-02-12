@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Plus, Circle, CheckCircle2, Trash2, ListChecks, AlertCircle } from 'lucide-react';
 import { getTodoItems, addTodoItem, updateTodoItem, removeTodoItem } from '../services/haClient';
+import { logger } from '../utils/logger';
 
 /**
  * TodoModal - Full-screen modal for managing a todo list from Home Assistant.
@@ -29,14 +30,14 @@ export default function TodoModal({ show, onClose, conn, entities, settings, t }
 
   const fetchItems = useCallback(async () => {
     if (!conn || !todoEntityId) {
-      console.log('[TodoModal] fetchItems: conn or todoEntityId missing');
+      logger.debug('[TodoModal] fetchItems: conn or todoEntityId missing');
       return;
     }
     setLoading(true);
     try {
-      console.log('[TodoModal] fetching items for:', todoEntityId);
+      logger.debug('[TodoModal] fetching items for:', todoEntityId);
       const result = await getTodoItems(conn, todoEntityId);
-      console.log('[TodoModal] items result:', result);
+      logger.debug('[TodoModal] items result:', result);
       setItems(result || []);
     } catch (err) {
       setError(err.message);

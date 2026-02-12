@@ -12,6 +12,7 @@ export { MediaPlayerCard, MediaGroupCard } from './MediaCards';
 export { default as ModernDropdown } from './ModernDropdown';
 export { default as PageNavigation } from './PageNavigation';
 export { default as PersonStatus } from './PersonStatus';
+export { default as RoomCard } from './RoomCard';
 export { default as SensorCard } from './SensorCard';
 export { default as MediaPage } from './MediaPage';
 export { default as SparkLine } from './SparkLine';

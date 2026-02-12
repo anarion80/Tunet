@@ -372,7 +372,7 @@ export default function MediaModal({
                     </button>
                   )}
                   {canGroup && isSelf && groupMembers.length > 1 && (
-                    <div className="p-2.5 rounded-full bg-blue-500/20 text-blue-400" title="Linka">
+                    <div className="p-2.5 rounded-full bg-blue-500/20 text-blue-400" title={t('tooltip.linked')}>
                       <Link className="w-4 h-4" />
                     </div>
                   )}

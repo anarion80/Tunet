@@ -47,6 +47,12 @@ export const getCardGridSpan = (cardId, getCardSettingsKey, cardSettings, active
     return sizeSetting === 'small' ? 1 : 2;
   }
 
+  if (cardId.startsWith('room_card_')) {
+    const settingsKey = getCardSettingsKey(cardId);
+    const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
+    return sizeSetting === 'small' ? 1 : 2;
+  }
+
   const settingsKey = getCardSettingsKey(cardId);
   const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
   if (sizeSetting === 'small') return 1;

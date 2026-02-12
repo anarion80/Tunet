@@ -7,6 +7,7 @@ import {
   CloudSun,
   Coins,
   Gamepad2,
+  Home,
   Lightbulb,
   ListChecks,
   Music,
@@ -17,7 +18,110 @@ import {
   Zap
 } from '../icons';
 
+import React, { useState, useEffect } from 'react';
 import { isToggleEntity } from '../utils';
+import { getAreas, getEntitiesForArea } from '../services/haClient';
+
+const TypeButton = ({ type, icon: Icon, label, isActive, onSelect }) => (
+  <button
+    type="button"
+    onClick={() => onSelect(type)}
+    className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-150 ease-out font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border focus-visible:outline-none ${isActive ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+  >
+    <Icon className="w-4 h-4" /> {label}
+  </button>
+);
+
+/** Room area picker — extracted outside AddCardContent so state persists across parent re-renders. */
+function RoomSection({ conn, searchTerm, selectedArea, setSelectedArea, setAreaEntities, areaEntities, t }) {
+  const [areas, setAreas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingEntities, setLoadingEntities] = useState(false);
+
+  useEffect(() => {
+    if (!conn) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getAreas(conn);
+        if (!cancelled) {
+          setAreas(result.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+        }
+      } catch (err) {
+        console.error('Failed to load areas:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [conn]);
+
+  useEffect(() => {
+    if (!selectedArea || !conn) {
+      setAreaEntities([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingEntities(true);
+    (async () => {
+      try {
+        const result = await getEntitiesForArea(conn, selectedArea.area_id);
+        if (!cancelled) setAreaEntities(result);
+      } catch (err) {
+        console.error('Failed to load area entities:', err);
+      } finally {
+        if (!cancelled) setLoadingEntities(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedArea, conn, setAreaEntities]);
+
+  const filteredAreas = areas.filter(a => {
+    if (!searchTerm) return true;
+    return (a.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xs uppercase font-bold text-gray-500 ml-4">{t('addCard.selectArea')}</p>
+      {loading && (
+        <p className="text-gray-500 text-sm text-center py-4">{t('addCard.loadingAreas')}</p>
+      )}
+      {!loading && filteredAreas.length === 0 && (
+        <p className="text-gray-500 italic text-sm text-center py-4">{t('addCard.noAreas')}</p>
+      )}
+      <div className="space-y-3">
+        {filteredAreas.map(area => {
+          const isSelected = selectedArea?.area_id === area.area_id;
+          return (
+            <button
+              type="button"
+              key={area.area_id}
+              onClick={() => setSelectedArea(isSelected ? null : area)}
+              className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center justify-between group entity-item border ${isSelected ? 'bg-blue-500/20 border-blue-500/50' : 'popup-surface popup-surface-hover border-transparent'}`}
+            >
+              <div className="flex flex-col overflow-hidden mr-4">
+                <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
+                  {area.name || area.area_id}
+                </span>
+                <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>
+                  {area.area_id}
+                  {isSelected && !loadingEntities && ` — ${areaEntities.length} ${t('addCard.roomEntitiesFound')}`}
+                </span>
+              </div>
+              <div className={`p-2 rounded-full transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-gray-500 group-hover:bg-green-500/20 group-hover:text-green-400'}`}>
+                {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Content for the "Add Card" modal.
@@ -53,14 +157,23 @@ export default function AddCardContent({
   nordpoolDecimals,
   setNordpoolDecimals,
   onAddSelected,
+  onAddRoom,
+  conn,
   getAddCardAvailableLabel,
   getAddCardNoneLeftLabel,
   t,
 }) {
+  const [selectedRoomArea, setSelectedRoomArea] = useState(null);
+  const [selectedRoomEntities, setSelectedRoomEntities] = useState([]);
+
+  const getLabel = (key, fallback) => {
+    const value = t ? t(key) : key;
+    return value && value !== key ? value : fallback;
+  };
 
   /** Reusable entity list item button. */
   const EntityItem = ({ id, isSelected, onClick, badgeText }) => (
-    <button type="button" key={id} onClick={onClick} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
+    <button type="button" key={id} onClick={onClick} className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center justify-between group entity-item border ${isSelected ? 'bg-blue-500/20 border-blue-500/50' : 'popup-surface popup-surface-hover border-transparent'}`}>
       <div className="flex flex-col overflow-hidden mr-4">
         <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id]?.attributes?.friendly_name || id}</span>
         <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
@@ -85,16 +198,6 @@ export default function AddCardContent({
         return id.toLowerCase().includes(lowerTerm) || name.toLowerCase().includes(lowerTerm);
       })
       .sort((a, b) => (entities[a]?.attributes?.friendly_name || a).localeCompare(entities[b]?.attributes?.friendly_name || b));
-
-  /** Card type selector pill button. */
-  const TypeButton = ({ type, icon: Icon, label }) => (
-    <button
-      onClick={() => setAddCardType(type)}
-      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${addCardType === type ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-    >
-      <Icon className="w-4 h-4" /> {label}
-    </button>
-  );
 
   /** Primary action button. */
   const AddButton = ({ onClick, disabled, children }) => (
@@ -147,7 +250,7 @@ export default function AddCardContent({
       <div>
         <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">{t('addCard.tempSensorOptional')}</p>
         <div className="space-y-3">
-          <button type="button" onClick={() => setSelectedTempId(null)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${!selectedTempId ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
+          <button type="button" onClick={() => setSelectedTempId(null)} className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center justify-between group entity-item border ${!selectedTempId ? 'bg-blue-500/20 border-blue-500/50' : 'popup-surface popup-surface-hover border-transparent'}`}>
             <div className="flex flex-col overflow-hidden mr-4">
               <span className={`text-sm font-bold transition-colors truncate ${!selectedTempId ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{t('addCard.useWeatherTemp')}</span>
               <span className={`text-[11px] font-medium truncate ${!selectedTempId ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>weather.temperature</span>
@@ -194,7 +297,7 @@ export default function AddCardContent({
       <div>
         <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-4">{t('addCard.remoteOptional')}</p>
         <div className="space-y-3">
-          <button type="button" onClick={() => setSelectedAndroidTVRemoteId(null)} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${!selectedAndroidTVRemoteId ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
+          <button type="button" onClick={() => setSelectedAndroidTVRemoteId(null)} className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center justify-between group entity-item border ${!selectedAndroidTVRemoteId ? 'bg-blue-500/20 border-blue-500/50' : 'popup-surface popup-surface-hover border-transparent'}`}>
             <div className="flex flex-col overflow-hidden mr-4">
               <span className={`text-sm font-bold transition-colors truncate ${!selectedAndroidTVRemoteId ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{t('addCard.noRemote')}</span>
               <span className={`text-[11px] font-medium truncate ${!selectedAndroidTVRemoteId ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{t('addCard.mediaControlOnly')}</span>
@@ -251,7 +354,7 @@ export default function AddCardContent({
             <button
               key={dec}
               onClick={() => setNordpoolDecimals(dec)}
-              className={`px-4 py-2 rounded-lg transition-all font-bold ${nordpoolDecimals === dec ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
+              className={`px-4 py-2 rounded-lg transition-colors font-bold ${nordpoolDecimals === dec ? 'bg-blue-500 text-white' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
             >
               {dec}
             </button>
@@ -273,13 +376,13 @@ export default function AddCardContent({
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setCostSelectionTarget('today')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${costSelectionTarget === 'today' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${costSelectionTarget === 'today' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
               >
                 <Coins className="w-4 h-4" /> {t('addCard.costToday')}
               </button>
               <button
                 onClick={() => setCostSelectionTarget('month')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${costSelectionTarget === 'month' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-bold uppercase tracking-widest text-[11px] whitespace-nowrap border ${costSelectionTarget === 'month' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)] border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
               >
                 <Coins className="w-4 h-4" /> {t('addCard.costMonth')}
               </button>
@@ -314,7 +417,7 @@ export default function AddCardContent({
                 }
                 if (selectedEntities.includes(id)) setSelectedEntities(prev => prev.filter(e => e !== id));
                 else setSelectedEntities(prev => [...prev, id]);
-              }} className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group entity-item ${isSelected ? 'bg-blue-500/20 border border-blue-500/50' : 'popup-surface popup-surface-hover'}`}>
+              }} className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center justify-between group entity-item border ${isSelected ? 'bg-blue-500/20 border-blue-500/50' : 'popup-surface popup-surface-hover border-transparent'}`}>
                 <div className="flex flex-col overflow-hidden mr-4">
                   <span className={`text-sm font-bold transition-colors truncate ${isSelected ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{entities[id].attributes?.friendly_name || id}</span>
                   <span className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-[var(--text-muted)] group-hover:text-gray-400'}`}>{id}</span>
@@ -367,18 +470,19 @@ export default function AddCardContent({
             <div className="mb-5">
               <p className="text-xs uppercase font-bold text-gray-500 ml-4 mb-2">{t('addCard.cardType')}</p>
               <div className="flex flex-wrap gap-2">
-                <TypeButton type="sensor" icon={Activity} label="Sensor" />
-                <TypeButton type="light" icon={Lightbulb} label={t('addCard.type.light')} />
-                <TypeButton type="vacuum" icon={Bot} label={t('addCard.type.vacuum')} />
-                <TypeButton type="climate" icon={Thermometer} label={t('addCard.type.climate')} />
-                <TypeButton type="car" icon={Car} label={t('addCard.type.car')} />
-                <TypeButton type="androidtv" icon={Gamepad2} label="Android TV" />
-                <TypeButton type="cost" icon={Coins} label={t('addCard.type.cost')} />
-                <TypeButton type="media" icon={Music} label={t('addCard.type.media')} />
-                <TypeButton type="weather" icon={CloudSun} label={t('addCard.type.weather')} />
-                <TypeButton type="calendar" icon={Calendar} label={t('addCard.type.calendar') || 'Calendar'} />
-                <TypeButton type="todo" icon={ListChecks} label={t('addCard.type.todo') || 'Todo'} />
-                <TypeButton type="nordpool" icon={Zap} label="Nordpool" />
+                <TypeButton type="sensor" icon={Activity} label={t('addCard.type.sensor')} isActive={addCardType === 'sensor'} onSelect={setAddCardType} />
+                <TypeButton type="light" icon={Lightbulb} label={t('addCard.type.light')} isActive={addCardType === 'light'} onSelect={setAddCardType} />
+                <TypeButton type="vacuum" icon={Bot} label={t('addCard.type.vacuum')} isActive={addCardType === 'vacuum'} onSelect={setAddCardType} />
+                <TypeButton type="climate" icon={Thermometer} label={t('addCard.type.climate')} isActive={addCardType === 'climate'} onSelect={setAddCardType} />
+                <TypeButton type="car" icon={Car} label={t('addCard.type.car')} isActive={addCardType === 'car'} onSelect={setAddCardType} />
+                <TypeButton type="androidtv" icon={Gamepad2} label={t('addCard.type.androidtv')} isActive={addCardType === 'androidtv'} onSelect={setAddCardType} />
+                <TypeButton type="cost" icon={Coins} label={t('addCard.type.cost')} isActive={addCardType === 'cost'} onSelect={setAddCardType} />
+                <TypeButton type="media" icon={Music} label={t('addCard.type.media')} isActive={addCardType === 'media'} onSelect={setAddCardType} />
+                <TypeButton type="weather" icon={CloudSun} label={t('addCard.type.weather')} isActive={addCardType === 'weather'} onSelect={setAddCardType} />
+                <TypeButton type="calendar" icon={Calendar} label={getLabel('addCard.type.calendar', 'Calendar')} isActive={addCardType === 'calendar'} onSelect={setAddCardType} />
+                <TypeButton type="todo" icon={ListChecks} label={getLabel('addCard.type.todo', 'Todo')} isActive={addCardType === 'todo'} onSelect={setAddCardType} />
+                <TypeButton type="nordpool" icon={Zap} label={t('addCard.type.nordpool')} isActive={addCardType === 'nordpool'} onSelect={setAddCardType} />
+                <TypeButton type="room" icon={Home} label={getLabel('addCard.type.room', 'Room')} isActive={addCardType === 'room'} onSelect={setAddCardType} />
               </div>
             </div>
           )}
@@ -390,6 +494,17 @@ export default function AddCardContent({
               : addCardType === 'todo' ? renderSimpleAddSection(ListChecks, t('addCard.todoDescription') || 'Add a to-do card. You can select which list to use after adding.', t('addCard.add'))
               : addCardType === 'car' ? renderSimpleAddSection(Car, t('addCard.carDescription'), t('addCard.carCard'))
               : addCardType === 'nordpool' ? renderNordpoolSection()
+              : addCardType === 'room' ? (
+                <RoomSection 
+                  conn={conn} 
+                  searchTerm={searchTerm} 
+                  t={t}
+                  selectedArea={selectedRoomArea}
+                  setSelectedArea={setSelectedRoomArea}
+                  areaEntities={selectedRoomEntities}
+                  setAreaEntities={setSelectedRoomEntities}
+                />
+              )
               : renderGenericEntityList()
             }
           </div>
@@ -413,7 +528,15 @@ export default function AddCardContent({
           )}
           {addCardType === 'nordpool' && selectedNordpoolId && (
             <button onClick={onAddSelected} className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
-              <Plus className="w-5 h-5" /> Nordpool kort
+              <Plus className="w-5 h-5" /> {t('addCard.nordpoolCard')}
+            </button>
+          )}
+          {addCardType === 'room' && selectedRoomArea && (
+            <button 
+              onClick={() => onAddRoom && onAddRoom(selectedRoomArea, selectedRoomEntities)} 
+              className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+            >
+              <Plus className="w-5 h-5" /> {selectedRoomArea.name || t('room.defaultName') || 'Room'}
             </button>
           )}
           <button onClick={onClose} className="w-full py-3 rounded-2xl popup-surface popup-surface-hover text-[var(--text-secondary)] font-bold uppercase tracking-widest transition-colors">OK</button>
