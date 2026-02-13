@@ -782,7 +782,8 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasAuth);
 
   // During onboarding, block token connections but ALLOW OAuth (including callbacks)
-  const haConfig = showOnboarding
+  // For Ingress, always pass config through so the connection can be established
+  const haConfig = showOnboarding && !config.isIngress
     ? config.authMethod === 'oauth'
       ? config                     // OAuth: pass config through so callback can be processed
       : { ...config, token: '' }   // Token: block until onboarding finishes
