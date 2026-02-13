@@ -330,13 +330,13 @@ export default function SensorCard({
               onClick={(e) => { e.stopPropagation(); if (state !== 'on') onControl('toggle'); }}
               className={`control-on px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${state === 'on' ? 'bg-blue-500/20 text-blue-400' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)]'}`}
             >
-              På
+              {translate('common.on')}
             </button>
-             <button 
+             <button
               onClick={(e) => { e.stopPropagation(); if (state === 'on') onControl('toggle'); }}
               className={`control-off px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${state !== 'on' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)]'}`}
             >
-              Av
+              {translate('common.off')}
             </button>
           </div>
         ) : (
@@ -378,17 +378,17 @@ export default function SensorCard({
         {showName && <p className="text-[var(--text-secondary)] text-xs tracking-widest uppercase mb-1 font-bold opacity-60">{String(name)}</p>}
         {showToggleControls ? (
           <div className="flex items-center gap-2 mt-4 bg-[var(--glass-bg)] rounded-full p-1 w-fit">
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); if (state === 'on') onControl('toggle'); }}
               className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${state !== 'on' ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
-              Av
+              {translate('common.off')}
             </button>
              <button 
               onClick={(e) => { e.stopPropagation(); if (state !== 'on') onControl('toggle'); }}
               className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${state === 'on' ? 'bg-blue-500/20 text-blue-400' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
-              På
+              {translate('common.on')}
             </button>
           </div>
         ) : (
