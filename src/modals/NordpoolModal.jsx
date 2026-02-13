@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Zap, ToggleLeft, ToggleRight } from '../icons';
-import InteractivePowerGraph from '../components/InteractivePowerGraph';
+import InteractivePowerGraph from '../components/charts/InteractivePowerGraph';
 
 /**
  * NordpoolModal - Modal for displaying Nordpool price information and graph
@@ -22,7 +22,7 @@ import InteractivePowerGraph from '../components/InteractivePowerGraph';
 export default function NordpoolModal({
   show,
   onClose,
-  entity,
+  entity: _entity,
   fullPriceData,
   currentPriceIndex,
   priceStats,

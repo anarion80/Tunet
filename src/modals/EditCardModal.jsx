@@ -1,8 +1,7 @@
 import React from 'react';
 import { X, Check, Plus, RefreshCw } from 'lucide-react';
-import M3Slider from '../components/M3Slider';
-import IconPicker from '../components/IconPicker';
-import { getAreas, getEntitiesForArea } from '../services/haClient';
+import IconPicker from '../components/ui/IconPicker';
+import { getEntitiesForArea } from '../services/haClient';
 
 function SearchableSelect({ label, value, options, onChange, placeholder, entities, t }) {
   const [open, setOpen] = React.useState(false);
@@ -89,8 +88,6 @@ export default function EditCardModal({
   canEditName, 
   canEditIcon, 
   canEditStatus, 
-  isEditLight, 
-  isEditGenericType,
   isEditSensor,
   isEditCalendar,
   isEditTodo,
@@ -107,14 +104,11 @@ export default function EditCardModal({
   customIcons,
   saveCustomIcon,
   saveCardSetting,
-  hiddenCards,
-  toggleCardVisibility
 }) {
   const [mediaSearch, setMediaSearch] = React.useState('');
 
   if (!isOpen) return null;
 
-  const isHidden = hiddenCards.includes(entityId);
   const isPerson = entityId?.startsWith('person.');
   const personDisplay = editSettings?.personDisplay || 'photo';
 
