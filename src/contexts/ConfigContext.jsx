@@ -99,6 +99,27 @@ export const ConfigProvider = ({ children }) => {
 
   const [config, setConfig] = useState(() => {
     if (typeof window !== 'undefined') {
+      // Ingress auto-detection: if served under /api/hassio_ingress/<token>,
+      // connect to HA's root URL via Token (OAuth often fails in Ingress iframe)
+      const path = window.location.pathname;
+      const ingressMatch = path.match(/(.*\/api\/hassio_ingress\/[^/]+)/);
+      if (ingressMatch && ingressMatch[1]) {
+        // Still load saved URL/token from localStorage so the user doesn't
+        // have to re-enter credentials on every page reload
+        let savedUrl, savedToken;
+        try {
+          savedUrl = localStorage.getItem('ha_url') || '';
+          savedToken = localStorage.getItem('ha_token') || '';
+        } catch { savedUrl = ''; savedToken = ''; }
+        return {
+          url: savedUrl || window.location.origin,
+          fallbackUrl: '',
+          token: savedToken,
+          authMethod: 'token',
+          isIngress: true,
+        };
+      }
+
       try {
         return {
           url: localStorage.getItem('ha_url') || '',

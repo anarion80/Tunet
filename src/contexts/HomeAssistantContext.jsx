@@ -62,9 +62,7 @@ export const HomeAssistantProvider = ({ children, config }) => {
     const hasOAuth = hasOAuthTokens();
     const isOAuthCallback = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('auth_callback');
 
-    if (!config.url) {
-      return;
-    }
+    if (!config.url) return;
 
     // For token mode, require token
     if (!isOAuth && !hasToken) {
@@ -72,7 +70,7 @@ export const HomeAssistantProvider = ({ children, config }) => {
       return;
     }
     // For oauth mode, require stored tokens OR an active callback in the URL
-    if (isOAuth && !hasOAuth && !isOAuthCallback) {
+    if (isOAuth && !hasOAuth && !isOAuthCallback && !config.isIngress) {
       if (connected) setConnected(false);
       return;
     }
@@ -107,7 +105,9 @@ export const HomeAssistantProvider = ({ children, config }) => {
     };
 
     async function connectWithToken(url) {
-      const auth = createLongLivedTokenAuth(url, config.token);
+      // Strip trailing /api or /api/ to prevent double /api/api/websocket
+      const cleanUrl = url.replace(/\/api\/?$/, '').replace(/\/$/, '');
+      const auth = createLongLivedTokenAuth(cleanUrl, config.token);
       const connInstance = await createConnection({ auth });
       if (cancelled) { 
         connInstance.close(); 
@@ -128,10 +128,15 @@ export const HomeAssistantProvider = ({ children, config }) => {
     }
 
     async function connectWithOAuth(url) {
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : undefined;
       const auth = await getAuth({
         hassUrl: url,
         saveTokens,
         loadTokens: () => Promise.resolve(loadTokens()),
+        clientId: typeof window !== 'undefined' ? window.location.origin : undefined,
+        redirectUrl,
       });
       // Clean up OAuth callback params from URL after successful auth
       if (window.location.search.includes('auth_callback')) {
@@ -158,12 +163,15 @@ export const HomeAssistantProvider = ({ children, config }) => {
 
     async function connect() {
       try {
-        if (isOAuth) {
+        if (config.token) {
+          await connectWithToken(config.url);
+        } else if (isOAuth) {
           await connectWithOAuth(config.url);
         } else {
           await connectWithToken(config.url);
         }
       } catch (err) {
+        console.error('[HA] Connection failed:', err);
         if (cancelled) return;
 
         // For OAuth, if auth is invalid, clear tokens and flag expiry
