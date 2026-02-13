@@ -118,10 +118,10 @@ export default function ThemeSidebar({
             <ModernDropdown
               label={t('settings.language')}
               icon={Globe}
-              options={['nn', 'en']}
+              options={['nn', 'en', 'pl']}
               current={language}
               onChange={setLanguage}
-              map={{ nn: t('language.nn'), en: t('language.en') }}
+              map={{ nn: t('language.nn'), en: t('language.en'), pl: t('language.pl') }}
               placeholder={t('dropdown.noneSelected')}
             />
           </div>

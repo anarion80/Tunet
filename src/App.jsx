@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, lazy } from 'react';
-import { en, nn } from './i18n';
+import { en, nn, pl } from './i18n';
 import {
   Activity,
   AlertTriangle,
@@ -175,7 +175,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     conn,
     activeUrl
   } = useHomeAssistant();
-  const translations = useMemo(() => ({ en, nn }), []);
+  const translations = useMemo(() => ({ en, nn, pl }), []);
   const nnFallback = useMemo(() => ({
     'system.tabHeader': 'Topptekst',
     'system.tabLayout': 'Oppsett'
@@ -188,7 +188,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   };
   const resolvedHeaderTitle = headerTitle || t('page.home');
   const [now, setNow] = useState(new Date());
-  
+
   // Modal state management
   const modals = useModals();
   const {
@@ -243,7 +243,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     hasOpenModal,
     closeAllModals,
   } = modals;
-  
+
   const [activeVacuumId, setActiveVacuumId] = useState(null);
   const [configTab, setConfigTab] = useState('connection');
   const [showThemeSidebar, setShowThemeSidebar] = useState(false);
@@ -294,7 +294,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   const resetToHome = () => {
     const isHome = activePage === 'home';
     const noModals = !hasOpenModal() && !editingPage && !editMode;
-    
+
     if (!isHome || !noModals) {
         setActivePage('home');
         closeAllModals();
@@ -463,7 +463,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
     return `${activeUrl.replace(/\/$/, '')}${rawUrl}`;
   };
-  const callService = (domain, service, data) => { 
+  const callService = (domain, service, data) => {
     if (!conn) {
       logger.warn(`Service call attempted while disconnected: ${domain}.${service}`);
       return Promise.reject(new Error('No connection'));
@@ -581,7 +581,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
       if (width >= 1280) setGridColCount(activeGridColumns);
       else if (width >= 1024) setGridColCount(Math.min(activeGridColumns, 3));
       else setGridColCount(2);
-      
+
       setIsCompactCards(width >= 480 && width < 640);
     };
 
@@ -733,7 +733,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     };
 
     return (
-      <SensorCard 
+      <SensorCard
         key={cardId}
         entity={entity}
         conn={conn}
@@ -746,17 +746,17 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
         name={name}
         t={t}
         onControl={handleControl}
-        onOpen={() => { 
+        onOpen={() => {
           if (!editMode) {
               setShowSensorInfoModal(cardId);
-          } 
+          }
         }}
       />
     );
   };
 
   // --- CARD RENDERERS ---
-  
+
   const renderLightCard = (cardId, dragProps, getControls, cardStyle, settingsKey) => (
     <LightCard
       key={cardId} cardId={cardId} dragProps={dragProps} controls={getControls(cardId)}
@@ -778,7 +778,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     const friendlyName = customNames[cardId] || getA(cardId, 'friendly_name') || cardId;
     const automationIconName = customIcons[cardId] || entities[cardId]?.attributes?.icon;
     const Icon = automationIconName ? (getIconComponent(automationIconName) || Workflow) : Workflow;
-    
+
     return (
       <div key={cardId} {...dragProps} data-haptic={editMode ? undefined : 'card'} className={`touch-feedback w-full p-4 rounded-2xl flex items-center justify-between transition-all duration-500 border group relative overflow-hidden font-sans mb-3 break-inside-avoid ${!editMode ? 'cursor-pointer active:scale-98' : 'cursor-move'}`} style={{...cardStyle, backgroundColor: isOn ? 'rgba(59, 130, 246, 0.03)' : 'rgba(15, 23, 42, 0.6)', borderColor: isOn ? 'rgba(59, 130, 246, 0.15)' : (editMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.04)')}} onClick={(e) => { if(!editMode) callService("automation", "toggle", { entity_id: cardId }); }}>
         {getControls(cardId)}
@@ -925,9 +925,9 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     const mediaPlayerId = settings.mediaPlayerId;
     const remoteId = settings.remoteId;
     const linkedMediaPlayers = settings.linkedMediaPlayers;
-    
+
     if (!mediaPlayerId) return null;
-    
+
     return (
       <GenericAndroidTVCard
         cardId={cardId}
@@ -963,7 +963,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
     // Swap cards
     [pageCards[currentIndex], pageCards[newIndex]] = [pageCards[newIndex], pageCards[currentIndex]];
-    
+
     persistConfig(newConfig);
   };
 
@@ -1006,7 +1006,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
     const dragProps = getDragProps({ cardId, index, colIndex });
     const baseCardStyle = getCardStyle({ cardId, isHidden, isDragging });
-    
+
     // Removed animation delay to prevent slow reanimation on card move
     const cardStyle = baseCardStyle;
 
@@ -1018,17 +1018,17 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
       const isHidden = hiddenCards.includes(cardId) || isCardHiddenByLogic(cardId);
       const settings = cardSettings[settingsKey] || cardSettings[editId] || {};
       const canToggleSize = (editId.startsWith('light_') || editId.startsWith('light.') || editId.startsWith('vacuum.') || editId.startsWith('automation.') || editId.startsWith('climate_card_') || editId.startsWith('cost_card_') || editId.startsWith('weather_temp_') || editId.startsWith('androidtv_card_') || editId.startsWith('calendar_card_') || editId.startsWith('todo_card_') || editId.startsWith('nordpool_card_') || editId === 'car' || editId.startsWith('car_card_') || settings.type === 'entity' || settings.type === 'toggle' || settings.type === 'sensor');
-      return ( 
+      return (
       <>
         <div className="absolute top-2 left-2 z-50 flex gap-2">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); moveCardInArray(cardId, 'left'); }}
             className="p-2 rounded-full transition-colors hover:bg-blue-500/80 text-white border border-white/20 shadow-lg bg-black/60"
             title={t('tooltip.moveLeft')}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); moveCardInArray(cardId, 'right'); }}
             className="p-2 rounded-full transition-colors hover:bg-blue-500/80 text-white border border-white/20 shadow-lg bg-black/60"
             title={t('tooltip.moveRight')}
@@ -1037,14 +1037,14 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           </button>
         </div>
         <div className="absolute top-2 right-2 z-50 flex gap-2">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); setShowEditCardModal(editId); setEditCardSettingsKey(settingsKey); }}
             className="p-2 rounded-full text-white border border-white/20 shadow-lg bg-black/60"
             title={t('tooltip.editCard')}
           >
             <Edit2 className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); toggleCardVisibility(cardId); }}
             className="p-2 rounded-full transition-colors hover:bg-white/20 text-white border border-white/20 shadow-lg"
             style={{backgroundColor: isHidden ? 'rgba(239, 68, 68, 0.8)' : 'rgba(0, 0, 0, 0.6)'}}
@@ -1053,14 +1053,14 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
           {canToggleSize && (
-            <button 
-              onClick={(e) => { 
+            <button
+              onClick={(e) => {
                 e.stopPropagation();
                 const currentSize = cardSettings[settingsKey]?.size || 'large';
                 const nextSize = (editId.startsWith('calendar_card_') || editId.startsWith('todo_card_'))
                   ? (currentSize === 'small' ? 'medium' : (currentSize === 'medium' ? 'large' : 'small'))
                   : (currentSize === 'small' ? 'large' : 'small');
-                saveCardSetting(settingsKey, 'size', nextSize); 
+                saveCardSetting(settingsKey, 'size', nextSize);
               }}
               className="p-2 rounded-full transition-colors hover:bg-purple-500/80 text-white border border-white/20 shadow-lg"
               style={{backgroundColor: cardSettings[settingsKey]?.size === 'small' ? 'rgba(168, 85, 247, 0.8)' : 'rgba(0, 0, 0, 0.6)'}}
@@ -1070,7 +1070,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             </button>
           )}
           {isCardRemovable(cardId) && (
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); removeCard(cardId); }}
               className="p-2 rounded-full transition-colors hover:bg-red-500/80 text-white border border-white/20 shadow-lg bg-black/60"
               title={t('tooltip.removeCard')}
@@ -1155,13 +1155,13 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
     if (cardId.startsWith('calendar_card_')) {
       const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
       return (
-        <CalendarCard 
+        <CalendarCard
            key={cardId}
            cardId={cardId}
            settings={cardSettings[settingsKey] || cardSettings[cardId] || {}}
            conn={conn}
            t={t}
-           locale={language === 'en' ? 'en-US' : 'nb-NO'}
+           locale={language === 'en' ? 'en-US' : 'pl-PL'}
            dragProps={dragProps}
            getControls={getControls}
            isEditMode={editMode}
@@ -1170,11 +1170,11 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
            size={sizeSetting}
            iconName={customIcons[cardId] || null}
            customName={customNames[cardId] || null}
-           onClick={(e) => { 
-             e.stopPropagation(); 
-             if (editMode) { 
-               setShowEditCardModal(cardId); 
-               setEditCardSettingsKey(settingsKey); 
+           onClick={(e) => {
+             e.stopPropagation();
+             if (editMode) {
+               setShowEditCardModal(cardId);
+               setEditCardSettingsKey(settingsKey);
              } else {
                setShowCalendarModal(true);
              }
@@ -1296,7 +1296,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
       // Legacy media_player placeholder for deletion
       return <MissingEntityCard cardId={cardId} dragProps={dragProps} controls={getControls(cardId)} cardStyle={cardStyle} label="Legacy" t={t} />;
     }
-    
+
     // Check for empty/missing media groups in edit mode
     // (In View Mode these are hidden by isCardHiddenByLogic)
     if (editMode && cardId.startsWith('media_group_')) {
@@ -1407,8 +1407,8 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             <div className={`flex flex-wrap gap-2.5 items-center min-w-0 ${isMobile ? 'scale-90 origin-left w-full' : ''}`}>
               {(pagesConfig.header || []).map(id => personStatus(id))}
               {editMode && (
-                <button 
-                  onClick={() => { setAddCardTargetPage('header'); setShowAddCardModal(true); }} 
+                <button
+                  onClick={() => { setAddCardTargetPage('header'); setShowAddCardModal(true); }}
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all text-[10px] font-bold uppercase tracking-[0.2em]"
                 >
                   <Plus className="w-3 h-3" /> {t('addCard.type.entity')}
@@ -1476,20 +1476,20 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
                 <Check className="w-4 h-4" /> {t('nav.done')}
               </button>
             )}
-            
-            <button 
+
+            <button
               onClick={() => {
                 const currentSettings = pageSettings[activePage];
                 if (currentSettings?.hidden) setActivePage('home');
                 setEditMode(!editMode);
-              }} 
+              }}
               className={`p-2 rounded-full group ${editMode ? 'bg-blue-500/20 text-blue-400' : 'text-[var(--text-secondary)]'}`}
               title={editMode ? t('nav.done') : t('menu.edit')}
             >
               <Edit2 className="w-5 h-5" />
             </button>
             <div className="relative">
-              <SettingsDropdown 
+              <SettingsDropdown
                 onOpenSettings={() => { setShowConfigModal(true); setConfigTab('connection'); }}
                 onOpenTheme={() => setShowThemeSidebar(true)}
                 onOpenLayout={() => setShowLayoutSidebar(true)}
@@ -1529,13 +1529,13 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
              <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] p-5 rounded-full mb-6 shadow-lg shadow-black/5">
                 <LayoutGrid className="w-12 h-12 text-[var(--text-primary)] opacity-80" />
              </div>
-             
+
              <h2 className="text-3xl font-light mb-3 text-[var(--text-primary)] uppercase tracking-tight">{t('welcome.title')}</h2>
              <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-md leading-relaxed">{t('welcome.subtitle')}</p>
-             
+
              <div className="flex gap-4">
-                  <button 
-                    onClick={() => setShowAddCardModal(true)} 
+                  <button
+                    onClick={() => setShowAddCardModal(true)}
                     className="flex items-center gap-3 px-8 py-4 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all duration-200 font-bold uppercase tracking-widest text-sm"
                   >
                      <Plus className="w-5 h-5" />
@@ -1600,7 +1600,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             })}
           </div>
         )}
-        
+
         {(showConfigModal || showOnboarding) && (
           <ModalSuspense>
             <ConfigModal
@@ -1666,7 +1666,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
         {/* New Sidebars */}
         <ModalSuspense>
-          <ThemeSidebar 
+          <ThemeSidebar
             open={showThemeSidebar}
             onClose={() => setShowThemeSidebar(false)}
             onSwitchToLayout={() => { setShowThemeSidebar(false); setShowLayoutSidebar(true); }}
@@ -1689,7 +1689,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
             setInactivityTimeout={setInactivityTimeout}
           />
         </ModalSuspense>
-        
+
         <ModalSuspense>
           <LayoutSidebar
             open={showLayoutSidebar}
@@ -1915,7 +1915,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
         {editingPage && (
           <ModalSuspense>
-            <EditPageModal 
+            <EditPageModal
           isOpen={!!editingPage}
           onClose={() => setEditingPage(null)}
           t={t}
@@ -1930,9 +1930,9 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
         {showAddPageModal && (
           <ModalSuspense>
-            <AddPageModal 
-          isOpen={showAddPageModal} 
-          onClose={() => setShowAddPageModal(false)} 
+            <AddPageModal
+          isOpen={showAddPageModal}
+          onClose={() => setShowAddPageModal(false)}
           t={t}
           newPageLabel={newPageLabel}
           setNewPageLabel={setNewPageLabel}
@@ -1946,7 +1946,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
         {showEditCardModal && (
           <ModalSuspense>
-            <EditCardModal 
+            <EditCardModal
           isOpen={!!showEditCardModal}
           onClose={() => { setShowEditCardModal(null); setEditCardSettingsKey(null); }}
           t={t}
@@ -1981,7 +1981,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
 
         {showSensorInfoModal && (
           <ModalSuspense>
-            <SensorModal 
+            <SensorModal
           isOpen={!!showSensorInfoModal}
           onClose={() => setShowSensorInfoModal(null)}
           entityId={showSensorInfoModal}
