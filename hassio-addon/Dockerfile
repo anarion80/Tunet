@@ -1,17 +1,12 @@
 ARG BUILD_FROM
 # ── Stage 1: Build from source ────────────────────────────────────────
 FROM node:20-alpine AS builder
-
-RUN apk add --no-cache git
-
-ARG BUILD_REPO=https://github.com/oyvhov/Tunet.git
-ARG BUILD_BRANCH=addon-support
-
-WORKDIR /src
-# Version tag busts Docker cache — change this string to force a fresh clone
-RUN echo "CACHE_BUST=1.0.2" && git clone --depth 1 --branch ${BUILD_BRANCH} ${BUILD_REPO} .
-RUN npm ci
-RUN npm run build
+# Single RUN to prevent ALL Docker layer caching issues
+RUN apk add --no-cache git \
+ && git clone --depth 1 --branch addon-support https://github.com/oyvhov/Tunet.git /src \
+ && cd /src \
+ && npm ci \
+ && npm run build
 
 # ── Stage 2: Production image ────────────────────────────────────────
 ARG BUILD_FROM
