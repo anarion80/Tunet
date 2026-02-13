@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `profileApi.js` uses relative `./api` base for Ingress compatibility
 - ConfigModal hides URL/OAuth fields in Ingress mode
 - `haClient.js` strips trailing `/api` to prevent double `/api/api/websocket`
-- Docker default port changed from 3002 → 80 (mapped as 5173:80)
+- Docker container uses port 3002 by default
 - REST history fetch allows optional token (Ingress uses session cookie)
 
 ### Removed
