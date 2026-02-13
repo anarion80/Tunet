@@ -98,6 +98,8 @@
   "calendar.removeAll": "Remove all",
   "calendar.select.title": "Calendars",
   "calendar.selectAll": "Select all",
+  "calendar.select.one": "calendar selected",
+  "calendar.select.some": "calendars selected",
   "calendar.selectCalendars": "Select Calendars",
   "calendar.title": "Calendar",
   "calendar.today": "Today",

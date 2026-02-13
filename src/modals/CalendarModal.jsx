@@ -160,7 +160,7 @@ export default function CalendarModal({
             </h3>
             <div className="mt-2 px-3 py-1 rounded-full border inline-block transition-all duration-500" style={{ backgroundColor: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
               <p className="text-[10px] uppercase font-bold italic tracking-widest">
-                {selectedCalendars.length} {selectedCalendars.length === 1 ? 'kalender' : 'kalendrar'} vald
+                {selectedCalendars.length} {selectedCalendars.length === 1 ? translate('calendar.select.one') : translate('calendar.select.some')}
               </p>
             </div>
           </div>
