@@ -119,7 +119,9 @@ export const HomeAssistantProvider = ({ children, config }) => {
     };
 
     async function connectWithToken(url) {
-      const auth = createLongLivedTokenAuth(url, config.token);
+      // Strip trailing /api or /api/ to prevent double /api/api/websocket
+      const cleanUrl = url.replace(/\/api\/?$/, '').replace(/\/$/, '');
+      const auth = createLongLivedTokenAuth(cleanUrl, config.token);
       const connInstance = await createConnection({ auth });
       if (cancelled) { 
         connInstance.close(); 

@@ -8,7 +8,9 @@
  * so no explicit token is needed.
  */
 export function createIngressAuth(url, token = '') {
-  const wsUrl = url.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/websocket';
+  // Strip any trailing /api or /api/ to prevent double /api/api/websocket
+  const cleanUrl = url.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  const wsUrl = cleanUrl.replace(/^http/, 'ws') + '/api/websocket';
   return {
     data: { hassUrl: url, expires: -1 },
     wsUrl,
