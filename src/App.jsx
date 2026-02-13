@@ -107,6 +107,20 @@ import { createDragAndDropHandlers } from './dragAndDrop';
 import AuroraBackground from './components/AuroraBackground';
 
 function AppContent({ showOnboarding, setShowOnboarding }) {
+  
+  const getLocaleForLanguage = (lang) => {
+    switch(lang) {
+      case 'en':
+        return 'en-US';
+      case 'nn':
+        return 'nn-NO';
+      case 'pl':
+        return 'pl-PL';
+      default:
+        return 'en-US'; // fallback to English
+    }
+  };
+
   const {
     currentTheme,
     setCurrentTheme,
@@ -1161,7 +1175,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
            settings={cardSettings[settingsKey] || cardSettings[cardId] || {}}
            conn={conn}
            t={t}
-           locale={language === 'en' ? 'en-US' : 'pl-PL'}
+           locale={getLocaleForLanguage(language)}
            dragProps={dragProps}
            getControls={getControls}
            isEditMode={editMode}
@@ -1392,11 +1406,12 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
         <Header
           now={now}
           headerTitle={resolvedHeaderTitle}
-          headerScale={headerScale}
+          headerScale={headerSettings?.scale || headerScale}
           editMode={editMode}
           headerSettings={headerSettings}
           setShowHeaderEditModal={setShowHeaderEditModal}
           t={t}
+          locale={getLocaleForLanguage(language)}
           isMobile={isMobile}
           sectionSpacing={sectionSpacing}
         >
@@ -2064,6 +2079,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
           conn={conn}
           entities={entities}
           t={t}
+          locale={getLocaleForLanguage(language)}
             />
           </ModalSuspense>
         )}
@@ -2119,6 +2135,7 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
                 weatherEntity={weatherEntity}
                 tempEntity={tempEntity}
                 t={t}
+                locale={getLocaleForLanguage(language)}
               />
             </ModalSuspense>
           );

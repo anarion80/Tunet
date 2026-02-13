@@ -12,17 +12,18 @@ import { Edit2 } from '../icons';
  * @param {Function} props.t - Translation function
  * @param {React.ReactNode} [props.children] - Optional children content
  */
-export default function Header({ 
-  now, 
-  headerTitle, 
-  headerScale, 
+export default function Header({
+  now,
+  headerTitle,
+  headerScale,
   editMode,
   headerSettings = { showTitle: true, showClock: true, showDate: true },
   setShowHeaderEditModal,
   t,
   children,
   isMobile,
-  sectionSpacing
+  sectionSpacing,
+  locale = 'en-US'
 }) {
   const headerBottom = Number.isFinite(sectionSpacing?.statusToNav)
     ? sectionSpacing.statusToNav
@@ -43,7 +44,7 @@ export default function Header({
     ? { hour: 'numeric', minute: '2-digit', hour12: true }
     : { hour: '2-digit', minute: '2-digit', hour12: false };
 
-  const timeStr = now.toLocaleTimeString(is12h ? 'en-US' : 'nn-NO', timeOptions);
+  const timeStr = now.toLocaleTimeString(locale, timeOptions);
 
   return (
     <header
@@ -103,7 +104,7 @@ export default function Header({
               className="text-gray-500 font-medium uppercase leading-none opacity-50 tracking-[0.2em] md:tracking-[0.6em]"
               style={{ fontSize: `calc(0.75rem * ${dateScale})` }}
             >
-              {now.toLocaleDateString('nn-NO', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           )}
         </div>

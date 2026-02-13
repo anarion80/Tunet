@@ -17,7 +17,8 @@ export default function CalendarModal({
   onClose,
   conn,
   entities,
-  t
+  t,
+  locale = 'en-US'
 }) {
   if (!show) return null;
 
@@ -102,11 +103,11 @@ export default function CalendarModal({
     
     calendarEvents.forEach(event => {
       const startDate = new Date(event.start);
-      const dateKey = startDate.toLocaleDateString('nn-NO', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const dateKey = startDate.toLocaleDateString(locale, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       });
       
       if (!groupedEvents[dateKey]) {
@@ -213,7 +214,7 @@ export default function CalendarModal({
                                       </span>
                                     ) : (
                                         <p className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
-                                          {startTime.toLocaleTimeString('nn-NO', { hour: '2-digit', minute: '2-digit' })}
+                                          {startTime.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     )}
                                      </div>

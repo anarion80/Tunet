@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 
 export default function InteractivePowerGraph({ data, currentIndex, t, locale }) {
   const translate = t || ((key) => key);
-  const timeLocale = locale || 'en-GB';
+  const timeLocale = locale || 'en-US';
   const [hoverIndex, setHoverIndex] = useState(null);
   const svgRef = useRef(null);
   if (!data || data.length === 0) return null;

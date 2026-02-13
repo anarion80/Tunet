@@ -33,6 +33,20 @@ export default function NordpoolModal({
   cardId,
   settings
 }) {
+  
+  const getLocaleForLanguage = (lang) => {
+    switch(lang) {
+      case 'en':
+        return 'en-US';
+      case 'nn':
+        return 'nn-NO';
+      case 'pl':
+        return 'pl-PL';
+      default:
+        return 'en-US'; // fallback to English
+    }
+  };
+
   if (!show) return null;
 
   const translate = t || ((key) => key);
@@ -130,7 +144,7 @@ export default function NordpoolModal({
                     currentIndex={currentPriceIndex}
                     priceStats={displayPriceStats}
                     t={translate}
-                    language={language}
+                    locale={getLocaleForLanguage(language)}
                   />
                 </div>
               )}

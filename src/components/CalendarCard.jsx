@@ -166,7 +166,7 @@ function CalendarCard({
     events.forEach(event => {
       const date = getEventDate(event.start);
       // Format: YYYY-MM-DD for grouping
-      const key = date.toLocaleDateString('sv-SE'); // ISO-like date part
+      const key = date.toISOString().split('T')[0]; // ISO date format for grouping
       if (!groups[key]) groups[key] = [];
       groups[key].push(event);
     });
