@@ -27,6 +27,14 @@ const readNumber = (key, fallback) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const readBoolean = (key, fallback) => {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  if (raw === '1' || raw === 'true') return true;
+  if (raw === '0' || raw === 'false') return false;
+  return fallback;
+};
+
 const normalizeSnapshotLanguage = (language) => normalizeLanguage(language);
 
 // ── collect ──────────────────────────────────────────────────────────
@@ -45,6 +53,7 @@ export function collectSnapshot() {
       customIcons:        readJSON('tunet_custom_icons', {}),
       pageSettings:       readJSON('tunet_page_settings', {}),
       gridColumns:        readNumber('tunet_grid_columns', 4),
+      dynamicGridColumns: readBoolean('tunet_grid_columns_dynamic', true),
       gridGapH:           readNumber('tunet_grid_gap_h', 20),
       gridGapV:           readNumber('tunet_grid_gap_v', 20),
       cardBorderRadius:   readNumber('tunet_card_border_radius', 16),
@@ -94,6 +103,7 @@ export function applySnapshot(snapshot, contextSetters = {}) {
   if (layout.sectionSpacing)   localStorage.setItem('tunet_section_spacing',    JSON.stringify(layout.sectionSpacing));
 
   if (layout.gridColumns !== undefined)      localStorage.setItem('tunet_grid_columns',      String(layout.gridColumns));
+  if (layout.dynamicGridColumns !== undefined) localStorage.setItem('tunet_grid_columns_dynamic', layout.dynamicGridColumns ? '1' : '0');
   if (layout.gridGapH !== undefined)         localStorage.setItem('tunet_grid_gap_h',        String(layout.gridGapH));
   if (layout.gridGapV !== undefined)         localStorage.setItem('tunet_grid_gap_v',        String(layout.gridGapV));
   if (layout.cardBorderRadius !== undefined) localStorage.setItem('tunet_card_border_radius', String(layout.cardBorderRadius));
@@ -122,6 +132,7 @@ export function applySnapshot(snapshot, contextSetters = {}) {
   if (s.persistCustomIcons && layout.customIcons)     s.persistCustomIcons(layout.customIcons);
   if (s.persistHiddenCards && layout.hiddenCards)      s.persistHiddenCards(layout.hiddenCards);
   if (s.setGridColumns && layout.gridColumns !== undefined)       s.setGridColumns(layout.gridColumns);
+  if (s.setDynamicGridColumns && layout.dynamicGridColumns !== undefined) s.setDynamicGridColumns(layout.dynamicGridColumns);
   if (s.setGridGapH && layout.gridGapH !== undefined)            s.setGridGapH(layout.gridGapH);
   if (s.setGridGapV && layout.gridGapV !== undefined)            s.setGridGapV(layout.gridGapV);
   if (s.setCardBorderRadius && layout.cardBorderRadius !== undefined) s.setCardBorderRadius(layout.cardBorderRadius);

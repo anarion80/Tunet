@@ -31,7 +31,6 @@ const readBoolean = (key, fallback) => {
   return fallback;
 };
 
-const deprecatedCardIds = ['power', 'rocky', 'climate', 'shield', 'weather', 'car', 'sonos'];
 const DEFAULT_SECTION_SPACING = {
   headerToStatus: 16,
   statusToNav: 24,
@@ -54,19 +53,6 @@ function loadPagesConfig() {
   // Remove legacy automations/lights page config entirely
   if (parsed.automations) { delete parsed.automations; modified = true; }
   if (parsed.lights) { delete parsed.lights; modified = true; }
-
-  // Remove deprecated cards
-  Object.keys(parsed).forEach(pageKey => {
-    if (Array.isArray(parsed[pageKey])) {
-      const filtered = parsed[pageKey].filter(id =>
-        !deprecatedCardIds.includes(id) && !String(id).startsWith('energy_price_')
-      );
-      if (filtered.length !== parsed[pageKey].length) {
-        parsed[pageKey] = filtered;
-        modified = true;
-      }
-    }
-  });
 
   // Ensure pages array exists
   if (!Array.isArray(parsed.pages)) {
@@ -125,8 +111,7 @@ export const PageProvider = ({ children }) => {
   useEffect(() => {
     const hidden = readJSON('tunet_hidden_cards', null);
     if (hidden) {
-      const filteredHidden = hidden.filter(id => !deprecatedCardIds.includes(id));
-      setHiddenCards(filteredHidden);
+      setHiddenCards(hidden);
     }
 
     const names = readJSON('tunet_custom_names', null);
