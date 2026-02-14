@@ -180,18 +180,23 @@ function AppContent({ showOnboarding, setShowOnboarding }) {
   // Sync activePage from URL hash (e.g. #settings -> settings)
   useEffect(() => {
     const hash = location.hash.replace(/^#/, '');
-    if (hash && hash !== activePage) {
-      _setActivePage(hash);
+    if (hash) {
+      _setActivePage(prev => {
+        if (prev !== hash) {
+          try { localStorage.setItem('tunet_active_page', hash); } catch {}
+          return hash;
+        }
+        return prev;
+      });
     }
-  }, [location.hash, activePage]);
+  }, [location.hash]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync URL hash from activePage (e.g. settings -> #settings)
   useEffect(() => {
-    const hash = location.hash.replace(/^#/, '');
-    if (activePage && activePage !== hash) {
+    if (activePage) {
       navigate(`#${activePage}`, { replace: true });
     }
-  }, [activePage, navigate, location.hash]);
+  }, [activePage, navigate]);
 
   const dragSourceRef = useRef(null);
   const touchTargetRef = useRef(null);
